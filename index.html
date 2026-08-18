@@ -122,8 +122,8 @@ scrollbar-width: none;
 <!-- Compact Inline Stats Strip -->
 <div class="flex items-center justify-between gap-1 text-[11px] bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-slate-600 overflow-x-auto no-scrollbar whitespace-nowrap">
 <div class="flex items-center gap-1">
-<span id="syncIndicator" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-<span id="statSyncStatus" class="font-bold text-blue-600">完全同期中</span>
+<span id="syncIndicator" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+<span id="statSyncStatus" class="font-bold text-slate-500">接続待機中...</span>
 </div>
 <span class="text-slate-300">|</span>
 <div class="flex items-center gap-1">
@@ -222,7 +222,7 @@ scrollbar-width: none;
 <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-500"></i>
 <span>統計・登録スポット一覧</span>
 </h3>
-<p class="text-xs text-slate-500 mb-4">2人の思い出の蓄積状況と場所の一覧</p>
+<p class="text-xs text-slate-500 mb-4">思い出の増加推移と登録場所リスト</p>
 
 <!-- Tabs for Modal -->
 <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl mb-4 text-xs font-semibold shrink-0">
@@ -252,7 +252,7 @@ scrollbar-width: none;
 
 <!-- Spot List View -->
 <div id="viewList" class="hidden space-y-2">
-<div id="spotListContainer" class="space-y-2"></div>
+<div id="spotListContainer" class="space-y-2 pb-2"></div>
 </div>
 </div>
 
@@ -382,7 +382,7 @@ toast.classList.add('opacity-0', 'pointer-events-none');
 }
 </script>
 
-<!-- ★★★ 完全統合リアルタイム同期スクリプト ★★★ -->
+<!-- ★★★ 独立したデータを強制合体させる完全統合プロンプト ★★★ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -401,14 +401,21 @@ window.spots = window.spots || [];
 try {
 const app = initializeApp(myFirebaseConfig);
 const db = getFirestore(app);
-// どの端末でも確実に同じ倉庫を共有するため統一パスを使用
 const spotsCollection = collection(db, 'spots');
 
-// リアルタイムリスナー（スマホ、iPad、PCすべてを完全同期）
 onSnapshot(spotsCollection, (snapshot) => {
 const cloudSpots = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+const cloudIds = new Set(cloudSpots.map(s => s.id));
+
+// ローカルにしかないピンをクラウドにアップロードして合体させる
+window.spots.forEach(localSpot => {
+if (!cloudIds.has(localSpot.id)) {
+setDoc(doc(spotsCollection, localSpot.id), localSpot).catch(e => console.error(e));
+}
+});
 
 const spotMap = new Map();
+window.spots.forEach(s => spotMap.set(s.id, s));
 cloudSpots.forEach(s => spotMap.set(s.id, s));
 
 window.spots = Array.from(spotMap.values());
@@ -420,15 +427,23 @@ if (typeof window.updateAnalytics === 'function') window.updateAnalytics();
 
 const statusEl = document.getElementById('statSyncStatus');
 if (statusEl) {
-statusEl.textContent = "完全同期中";
+statusEl.textContent = "完全同期済";
 statusEl.className = "font-bold text-blue-600";
+}
+const indicatorEl = document.getElementById('syncIndicator');
+if (indicatorEl) {
+indicatorEl.className = "w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse";
 }
 }, (err) => {
 console.error("Cloud sync error:", err);
 const statusEl = document.getElementById('statSyncStatus');
 if (statusEl) {
-statusEl.textContent = "同期エラー";
+statusEl.textContent = "未接続 (ローカル)";
 statusEl.className = "font-bold text-rose-600";
+}
+const indicatorEl = document.getElementById('syncIndicator');
+if (indicatorEl) {
+indicatorEl.className = "w-1.5 h-1.5 rounded-full bg-rose-500";
 }
 });
 
@@ -452,8 +467,12 @@ console.error("Delete error:", e);
 console.error("Firebase init error:", e);
 const statusEl = document.getElementById('statSyncStatus');
 if (statusEl) {
-statusEl.textContent = "ローカル保存のみ";
-statusEl.className = "font-bold text-slate-500";
+statusEl.textContent = "未接続 (ローカル)";
+statusEl.className = "font-bold text-rose-600";
+}
+const indicatorEl = document.getElementById('syncIndicator');
+if (indicatorEl) {
+indicatorEl.className = "w-1.5 h-1.5 rounded-full bg-rose-500";
 }
 }
 </script>
@@ -860,9 +879,9 @@ ${spots.map(s => {
 const gInfo = GENRE_CONFIG[s.genre] || GENRE_CONFIG.gourmet;
 return `
 <div onclick="closeDetailModal(); openDetailModal('${s.id}')" class="p-2.5 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/30 cursor-pointer transition flex items-center justify-between gap-2">
-<div class="flex items-center gap-2 overflow-hidden">
+<div class="flex items-center gap-2 overflow-hidden w-full">
 <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${gInfo.color}"></span>
-<div class="truncate">
+<div class="truncate flex-1">
 <div class="font-bold text-xs text-slate-800 truncate">${s.name}</div>
 <div class="text-[10px] text-slate-400">${s.date || '日付未設定'} / by ${s.author}</div>
 </div>
@@ -896,7 +915,6 @@ document.getElementById('progressBar').style.width = `${percent}%`;
 
 window.updateAnalytics = function() {
 const spots = window.spots || [];
-
 document.getElementById('statTotalPins').textContent = `${spots.length}個`;
 
 const authors = new Set();
@@ -998,16 +1016,25 @@ spots.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 let html = '';
 spots.forEach(s => {
 const gInfo = GENRE_CONFIG[s.genre] || GENRE_CONFIG.gourmet;
+// 写真がある場合はアイコンを表示
+const photoIcon = s.photo ? `<i data-lucide="image" class="w-3.5 h-3.5 text-slate-400"></i>` : '';
+
 html += `
-<div onclick="closeChartModal(); openDetailModal('${s.id}')" class="p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/20 cursor-pointer transition flex items-center justify-between gap-2 text-xs">
-<div class="flex items-center gap-2.5 overflow-hidden">
+<div onclick="closeChartModal(); openDetailModal('${s.id}')" class="p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/20 cursor-pointer transition flex items-center justify-between gap-3 text-xs">
+<div class="flex items-center gap-3 overflow-hidden flex-1">
 <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${gInfo.color}"></span>
-<div class="truncate">
-<div class="font-bold text-slate-800 truncate">${s.name}</div>
-<div class="text-[10px] text-slate-400">${s.pref} / ${s.date || '日付未設定'} / by ${s.author}</div>
+<div class="truncate flex-1">
+<div class="font-bold text-slate-800 text-sm truncate">${s.name}</div>
+<div class="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5">
+<span>${s.date || '日付未設定'}</span>
+${photoIcon}
 </div>
 </div>
-<i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+</div>
+<div class="flex flex-col items-end shrink-0">
+<span class="text-[10px] text-rose-500 font-bold mb-1">詳細を見る</span>
+<i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+</div>
 </div>
 `;
 });
@@ -1105,7 +1132,8 @@ if (chartInstance) {
 chartInstance.destroy();
 }
 
-const chartLabel = mode === 'monthly' ? '月別ピン数' : (mode === 'weekly' ? '週別ピン数' : '日別ピン数');
+// ★ グラフのラベルを「増加数」に変更してわかりやすく
+const chartLabel = mode === 'monthly' ? '月間増加数' : (mode === 'weekly' ? '週間増加数' : '日間増加数');
 
 chartInstance = new Chart(ctx, {
 type: 'bar',
@@ -1123,15 +1151,8 @@ borderRadius: 8
 options: {
 responsive: true,
 maintainAspectRatio: false,
-plugins: {
-legend: { display: false }
-},
-scales: {
-y: {
-beginAtZero: true,
-ticks: { precision: 0 }
-}
-}
+plugins: { legend: { display: false } },
+scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
 }
 });
 }
@@ -1283,11 +1304,12 @@ const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet;
 const isSpecial = spot.genre === 'want' || spot.genre === 'today';
 const stars = isSpecial ? genreInfo.label : '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating);
 
+// ★ 縦長写真が切れないように表示形式を変更
 const content = `
 <div class="space-y-3">
 ${spot.photo ? `
-<div class="rounded-xl overflow-hidden shadow-sm max-h-56 -mx-2 -mt-2 mb-2">
-<img src="${spot.photo}" class="w-full h-full object-cover">
+<div class="rounded-xl overflow-hidden shadow-sm bg-slate-50 -mx-2 -mt-2 mb-3 flex items-center justify-center p-1 border border-slate-100">
+<img src="${spot.photo}" class="max-w-full max-h-72 object-contain rounded-lg">
 </div>
 ` : ''}
 
