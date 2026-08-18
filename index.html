@@ -110,7 +110,7 @@ scrollbar-width: none;
 </button>
 <button onclick="openChartModal()" class="flex items-center gap-1 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 rounded-lg transition font-medium">
 <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
-<span>統計</span>
+<span>統計・一覧</span>
 </button>
 <button onclick="openAddModal()" class="flex items-center gap-1 text-xs bg-rose-500 hover:bg-rose-600 text-white px-2.5 py-1 rounded-lg shadow-sm transition font-medium">
 <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
@@ -123,7 +123,7 @@ scrollbar-width: none;
 <div class="flex items-center justify-between gap-1 text-[11px] bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-slate-600 overflow-x-auto no-scrollbar whitespace-nowrap">
 <div class="flex items-center gap-1">
 <span id="syncIndicator" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-<span id="statSyncStatus" class="font-bold text-blue-600">クラウド自動同期中</span>
+<span id="statSyncStatus" class="font-bold text-blue-600">完全同期中</span>
 </div>
 <span class="text-slate-300">|</span>
 <div class="flex items-center gap-1">
@@ -211,29 +211,52 @@ scrollbar-width: none;
 </div>
 </main>
 
-<!-- Chart Analytics Modal -->
+<!-- Chart Analytics & List Modal -->
 <div id="chartModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
-<div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 relative my-auto">
-<button onclick="closeChartModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+<div class="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 relative my-auto max-h-[90vh] flex flex-col">
+<button onclick="closeChartModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 z-10">
 <i data-lucide="x" class="w-5 h-5"></i>
 </button>
+
 <h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
 <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-500"></i>
-<span>ピン登録数の統計</span>
+<span>統計・登録スポット一覧</span>
 </h3>
-<p class="text-xs text-slate-500 mb-3">2人の思い出の蓄積推移グラフ（行きたい！・今日の俺は除く）</p>
+<p class="text-xs text-slate-500 mb-4">2人の思い出の蓄積状況と場所の一覧</p>
 
-<div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl mb-4 text-xs font-semibold">
-<button id="chartTabMonthly" onclick="switchChartMode('monthly')" class="flex-1 py-1.5 rounded-lg bg-white shadow-sm text-slate-800 transition">月別</button>
-<button id="chartTabWeekly" onclick="switchChartMode('weekly')" class="flex-1 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition">週別</button>
-<button id="chartTabDaily" onclick="switchChartMode('daily')" class="flex-1 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition">日別</button>
+<!-- Tabs for Modal -->
+<div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl mb-4 text-xs font-semibold shrink-0">
+<button id="modalTabChart" onclick="switchModalTab('chart')" class="flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition">グラフ推移</button>
+<button id="modalTabPref" onclick="switchModalTab('pref')" class="flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition">県別ピン数</button>
+<button id="modalTabList" onclick="switchModalTab('list')" class="flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition">場所の一覧</button>
 </div>
 
-<div class="w-full h-64 relative bg-slate-50 p-2 rounded-xl border border-slate-100">
+<!-- Content Area inside Modal -->
+<div class="flex-1 overflow-y-auto pr-1">
+<!-- Chart View -->
+<div id="viewChart" class="space-y-3">
+<div class="flex items-center gap-1 bg-slate-50 p-1 rounded-lg text-xs font-semibold border border-slate-100">
+<button id="chartTabMonthly" onclick="switchChartMode('monthly')" class="flex-1 py-1 rounded bg-white shadow-sm text-slate-800 transition">月別</button>
+<button id="chartTabWeekly" onclick="switchChartMode('weekly')" class="flex-1 py-1 rounded text-slate-500 hover:text-slate-800 transition">週別</button>
+<button id="chartTabDaily" onclick="switchChartMode('daily')" class="flex-1 py-1 rounded text-slate-500 hover:text-slate-800 transition">日別</button>
+</div>
+<div class="w-full h-60 relative bg-slate-50 p-2 rounded-xl border border-slate-100">
 <canvas id="monthlyChart"></canvas>
 </div>
+</div>
 
-<div class="mt-4 text-right">
+<!-- Prefectural Count View -->
+<div id="viewPref" class="hidden space-y-2">
+<div id="prefCountList" class="divide-y divide-slate-100 text-xs"></div>
+</div>
+
+<!-- Spot List View -->
+<div id="viewList" class="hidden space-y-2">
+<div id="spotListContainer" class="space-y-2"></div>
+</div>
+</div>
+
+<div class="mt-4 text-right shrink-0 pt-2 border-t border-slate-100">
 <button onclick="closeChartModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-lg font-medium transition">
 閉じる
 </button>
@@ -359,7 +382,7 @@ toast.classList.add('opacity-0', 'pointer-events-none');
 }
 </script>
 
-<!-- ★★★ 直結型・超安定ダイレクト同期プロンプト ★★★ -->
+<!-- ★★★ 完全統合リアルタイム同期スクリプト ★★★ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -378,15 +401,14 @@ window.spots = window.spots || [];
 try {
 const app = initializeApp(myFirebaseConfig);
 const db = getFirestore(app);
-// どの端末からも全く同じ場所に直結するよう、パスをシンプルに統一
+// どの端末でも確実に同じ倉庫を共有するため統一パスを使用
 const spotsCollection = collection(db, 'spots');
 
-// リアルタイムリスナー（自動同期）
+// リアルタイムリスナー（スマホ、iPad、PCすべてを完全同期）
 onSnapshot(spotsCollection, (snapshot) => {
 const cloudSpots = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
 
 const spotMap = new Map();
-window.spots.forEach(s => spotMap.set(s.id, s));
 cloudSpots.forEach(s => spotMap.set(s.id, s));
 
 window.spots = Array.from(spotMap.values());
@@ -398,12 +420,8 @@ if (typeof window.updateAnalytics === 'function') window.updateAnalytics();
 
 const statusEl = document.getElementById('statSyncStatus');
 if (statusEl) {
-statusEl.textContent = "クラウド自動同期中";
+statusEl.textContent = "完全同期中";
 statusEl.className = "font-bold text-blue-600";
-}
-const indicatorEl = document.getElementById('syncIndicator');
-if (indicatorEl) {
-indicatorEl.className = "w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse";
 }
 }, (err) => {
 console.error("Cloud sync error:", err);
@@ -456,13 +474,8 @@ const PREFECTURES = [
 { name: "青森市・浅虫", lat: 40.8244, lng: 140.7400, zoom: 12 },
 { name: "弘前・津軽", lat: 40.6031, lng: 140.4642, zoom: 12 }
 ]},
-{ name: "岩手県", lat: 39.7036, lng: 141.1527, zoom: 9, areas: [
-{ name: "盛岡市", lat: 39.7036, lng: 141.1527, zoom: 12 }
-]},
-{ name: "宮城県", lat: 38.2688, lng: 140.8719, zoom: 9, areas: [
-{ name: "仙台市", lat: 38.2688, lng: 140.8719, zoom: 13 },
-{ name: "松島", lat: 38.3721, lng: 141.0637, zoom: 12 }
-]},
+{ name: "岩手県", lat: 39.7036, lng: 141.1527, zoom: 9, areas: [{ name: "盛岡市", lat: 39.7036, lng: 141.1527, zoom: 12 }]},
+{ name: "宮城県", lat: 38.2688, lng: 140.8719, zoom: 9, areas: [{ name: "仙台市", lat: 38.2688, lng: 140.8719, zoom: 13 }, { name: "松島", lat: 38.3721, lng: 141.0637, zoom: 12 }]},
 { name: "秋田県", lat: 39.7186, lng: 140.1024, zoom: 9, areas: [{ name: "秋田市", lat: 39.7186, lng: 140.1024, zoom: 12 }]},
 { name: "山形県", lat: 38.2404, lng: 140.3633, zoom: 9, areas: [{ name: "山形市", lat: 38.2404, lng: 140.3633, zoom: 12 }]},
 { name: "福島県", lat: 37.7500, lng: 140.4678, zoom: 9, areas: [{ name: "会津若松", lat: 37.4947, lng: 139.9297, zoom: 12 }]},
@@ -492,14 +505,8 @@ const PREFECTURES = [
 { name: "愛知県", lat: 35.1802, lng: 136.9066, zoom: 9, areas: [{ name: "名古屋市", lat: 35.1709, lng: 136.9076, zoom: 13 }]},
 { name: "三重県", lat: 34.7303, lng: 136.5086, zoom: 9, areas: [{ name: "伊勢神宮", lat: 34.4878, lng: 136.7092, zoom: 12 }]},
 { name: "滋賀県", lat: 35.0045, lng: 135.8686, zoom: 9, areas: [{ name: "大津市", lat: 35.0045, lng: 135.8686, zoom: 12 }]},
-{ name: "京都府", lat: 35.0211, lng: 135.7556, zoom: 10, areas: [
-{ name: "祇園・河原町", lat: 35.0037, lng: 135.7681, zoom: 14 },
-{ name: "嵐山", lat: 35.0158, lng: 135.6777, zoom: 14 }
-]},
-{ name: "大阪府", lat: 34.6937, lng: 135.5022, zoom: 10, areas: [
-{ name: "梅田・キタ", lat: 34.7025, lng: 135.4959, zoom: 14 },
-{ name: "難波・ミナミ", lat: 34.6656, lng: 135.5014, zoom: 14 }
-]},
+{ name: "京都府", lat: 35.0211, lng: 135.7556, zoom: 10, areas: [{ name: "祇園・河原町", lat: 35.0037, lng: 135.7681, zoom: 14 }, { name: "嵐山", lat: 35.0158, lng: 135.6777, zoom: 14 }]},
+{ name: "大阪府", lat: 34.6937, lng: 135.5022, zoom: 10, areas: [{ name: "梅田・キタ", lat: 34.7025, lng: 135.4959, zoom: 14 }, { name: "難波・ミナミ", lat: 34.6656, lng: 135.5014, zoom: 14 }]},
 { name: "兵庫県", lat: 34.6913, lng: 135.1830, zoom: 9, areas: [{ name: "神戸市", lat: 34.6913, lng: 135.1955, zoom: 13 }]},
 { name: "奈良県", lat: 34.6851, lng: 135.8328, zoom: 9, areas: [{ name: "奈良公園", lat: 34.6851, lng: 135.8328, zoom: 13 }]},
 { name: "和歌山県", lat: 34.2260, lng: 135.1675, zoom: 9, areas: [{ name: "白浜", lat: 33.6811, lng: 135.3475, zoom: 12 }]},
@@ -931,24 +938,97 @@ diffEl.className = "font-bold text-slate-700";
 function openChartModal() {
 document.getElementById('chartModal').classList.remove('hidden');
 renderAnalyticsChart(currentChartMode);
+renderPrefCountList();
+renderSpotList();
 }
 
 function closeChartModal() {
 document.getElementById('chartModal').classList.add('hidden');
 }
 
-function switchChartMode(mode) {
-currentChartMode = mode;
-
-['monthly', 'weekly', 'daily'].forEach(m => {
-const tabBtn = document.getElementById(`chartTab${m.charAt(0).toUpperCase() + m.slice(1)}`);
-if (m === mode) {
-tabBtn.className = "flex-1 py-1.5 rounded-lg bg-white shadow-sm text-slate-800 transition";
+function switchModalTab(tab) {
+['chart', 'pref', 'list'].forEach(t => {
+const btn = document.getElementById(`modalTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+const view = document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`);
+if (t === tab) {
+btn.className = "flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition";
+view.classList.remove('hidden');
 } else {
-tabBtn.className = "flex-1 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition";
+btn.className = "flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition";
+view.classList.add('hidden');
+}
+});
+}
+
+function renderPrefCountList() {
+const container = document.getElementById('prefCountList');
+const counts = {};
+PREFECTURES.forEach(p => counts[p.name] = 0);
+
+(window.spots || []).forEach(s => {
+if (s.pref && counts[s.pref] !== undefined) {
+counts[s.pref]++;
 }
 });
 
+let html = '';
+PREFECTURES.forEach(p => {
+const cnt = counts[p.name];
+if (cnt > 0) {
+html += `
+<div class="py-2 flex items-center justify-between">
+<span class="font-bold text-slate-800">${p.name}</span>
+<span class="bg-rose-100 text-rose-700 font-bold px-2.5 py-0.5 rounded-full text-xs">${cnt}個</span>
+</div>
+`;
+}
+});
+
+if (html === '') {
+html = '<div class="text-center py-6 text-slate-400 text-xs">まだピンが登録されていません</div>';
+}
+container.innerHTML = html;
+}
+
+function renderSpotList() {
+const container = document.getElementById('spotListContainer');
+const spots = [...(window.spots || [])];
+spots.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+let html = '';
+spots.forEach(s => {
+const gInfo = GENRE_CONFIG[s.genre] || GENRE_CONFIG.gourmet;
+html += `
+<div onclick="closeChartModal(); openDetailModal('${s.id}')" class="p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/20 cursor-pointer transition flex items-center justify-between gap-2 text-xs">
+<div class="flex items-center gap-2.5 overflow-hidden">
+<span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${gInfo.color}"></span>
+<div class="truncate">
+<div class="font-bold text-slate-800 truncate">${s.name}</div>
+<div class="text-[10px] text-slate-400">${s.pref} / ${s.date || '日付未設定'} / by ${s.author}</div>
+</div>
+</div>
+<i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+</div>
+`;
+});
+
+if (spots.length === 0) {
+html = '<div class="text-center py-6 text-slate-400 text-xs">まだスポットがありません</div>';
+}
+container.innerHTML = html;
+lucide.createIcons();
+}
+
+function switchChartMode(mode) {
+currentChartMode = mode;
+['monthly', 'weekly', 'daily'].forEach(m => {
+const tabBtn = document.getElementById(`chartTab${m.charAt(0).toUpperCase() + m.slice(1)}`);
+if (m === mode) {
+tabBtn.className = "flex-1 py-1 rounded bg-white shadow-sm text-slate-800 transition";
+} else {
+tabBtn.className = "flex-1 py-1 rounded text-slate-500 hover:text-slate-800 transition";
+}
+});
 renderAnalyticsChart(mode);
 }
 
@@ -963,7 +1043,7 @@ return `${date.getFullYear()}-W${weekNum < 10 ? '0' + weekNum : weekNum}`;
 
 function renderAnalyticsChart(mode) {
 const ctx = document.getElementById('monthlyChart').getContext('2d');
-const spots = (window.spots || []).filter(s => s.genre !== 'want' && s.genre !== 'today');
+const spots = window.spots || [];
 const counts = {};
 
 if (mode === 'monthly') {
@@ -1174,14 +1254,14 @@ lng: parseFloat(document.getElementById('spotLng').value),
 photo: tempPhotoBase64
 };
 
-const index = (window.spots || []).findIndex(s => s.id === id);
+window.spots = window.spots || [];
+const index = window.spots.findIndex(s => s.id === id);
 let isEdit = false;
 if (index >= 0) {
 if (!tempPhotoBase64) newSpot.photo = window.spots[index].photo;
 window.spots[index] = newSpot;
 isEdit = true;
 } else {
-window.spots = window.spots || [];
 window.spots.push(newSpot);
 }
 
