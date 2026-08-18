@@ -19,8 +19,9 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
-<!-- Chart.js for Analytics -->
-<script src="https://cdn.jsdelivr.net/npm/Chart.js"></script>
+<!-- ★ グラフ描画ライブラリを最新の安定版に修正 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 #map {
 height: calc(100vh - 200px);
@@ -240,7 +241,7 @@ scrollbar-width: none;
 <button id="chartTabWeekly" onclick="switchChartMode('weekly')" class="flex-1 py-1 rounded text-slate-500 hover:text-slate-800 transition">週別</button>
 <button id="chartTabDaily" onclick="switchChartMode('daily')" class="flex-1 py-1 rounded text-slate-500 hover:text-slate-800 transition">日別</button>
 </div>
-<div class="w-full h-60 relative bg-slate-50 p-2 rounded-xl border border-slate-100">
+<div class="w-full h-64 relative bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-center">
 <canvas id="monthlyChart"></canvas>
 </div>
 </div>
@@ -333,7 +334,8 @@ scrollbar-width: none;
 <input type="file" id="spotPhotoInput" accept="image/*" onchange="handleImageUpload(event)" class="hidden">
 <div onclick="document.getElementById('spotPhotoInput').click()" class="border-2 border-dashed border-slate-200 hover:border-rose-400 rounded-xl p-3 text-center cursor-pointer transition bg-slate-50 flex flex-col items-center justify-center gap-1">
 <div id="photoPreviewContainer" class="hidden w-full relative">
-<img id="photoPreview" class="h-32 w-full object-cover rounded-lg shadow-sm">
+<!-- ★ 写真が縦長でも切れないように object-contain に設定 -->
+<img id="photoPreview" class="h-40 w-full object-contain rounded-lg shadow-sm bg-black/5">
 <span class="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">変更</span>
 </div>
 <div id="photoPlaceholder" class="flex flex-col items-center text-slate-400 py-2">
@@ -382,7 +384,7 @@ toast.classList.add('opacity-0', 'pointer-events-none');
 }
 </script>
 
-<!-- ★★★ 独立したデータを強制合体させる完全統合プロンプト ★★★ -->
+<!-- ★★★ データ同期スクリプト ★★★ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -407,7 +409,6 @@ onSnapshot(spotsCollection, (snapshot) => {
 const cloudSpots = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
 const cloudIds = new Set(cloudSpots.map(s => s.id));
 
-// ローカルにしかないピンをクラウドにアップロードして合体させる
 window.spots.forEach(localSpot => {
 if (!cloudIds.has(localSpot.id)) {
 setDoc(doc(spotsCollection, localSpot.id), localSpot).catch(e => console.error(e));
@@ -955,9 +956,7 @@ diffEl.className = "font-bold text-slate-700";
 
 function openChartModal() {
 document.getElementById('chartModal').classList.remove('hidden');
-renderAnalyticsChart(currentChartMode);
-renderPrefCountList();
-renderSpotList();
+switchModalTab('chart'); // 初期表示はグラフタブ
 }
 
 function closeChartModal() {
@@ -971,6 +970,18 @@ const view = document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(
 if (t === tab) {
 btn.className = "flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition";
 view.classList.remove('hidden');
+
+// タブが切り替わって表示されてからグラフを描画（真っ白バグ防止）
+if(tab === 'chart'){
+// 描画のタイミングをほんの少し遅らせることで確実にサイズを取得させる
+setTimeout(() => {
+renderAnalyticsChart(currentChartMode);
+}, 10);
+} else if (tab === 'pref') {
+renderPrefCountList();
+} else if (tab === 'list') {
+renderSpotList();
+}
 } else {
 btn.className = "flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition";
 view.classList.add('hidden');
@@ -1011,22 +1022,26 @@ container.innerHTML = html;
 function renderSpotList() {
 const container = document.getElementById('spotListContainer');
 const spots = [...(window.spots || [])];
+// 訪問日の新しい順に並び替え
 spots.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
 let html = '';
 spots.forEach(s => {
 const gInfo = GENRE_CONFIG[s.genre] || GENRE_CONFIG.gourmet;
 // 写真がある場合はアイコンを表示
-const photoIcon = s.photo ? `<i data-lucide="image" class="w-3.5 h-3.5 text-slate-400"></i>` : '';
+const photoIcon = s.photo ? `<i data-lucide="image" class="w-3.5 h-3.5 text-slate-400 ml-1"></i>` : '';
 
+// ★ 場所は県のみ、店名と日付をシンプルに表示
 html += `
 <div onclick="closeChartModal(); openDetailModal('${s.id}')" class="p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/20 cursor-pointer transition flex items-center justify-between gap-3 text-xs">
 <div class="flex items-center gap-3 overflow-hidden flex-1">
 <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${gInfo.color}"></span>
 <div class="truncate flex-1">
 <div class="font-bold text-slate-800 text-sm truncate">${s.name}</div>
-<div class="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5">
-<span>${s.date || '日付未設定'}</span>
+<div class="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+<span>${s.pref}</span>
+<span>/</span>
+<span>${s.date || '訪問日未設定'}</span>
 ${photoIcon}
 </div>
 </div>
@@ -1069,37 +1084,34 @@ return `${date.getFullYear()}-W${weekNum < 10 ? '0' + weekNum : weekNum}`;
 }
 
 function renderAnalyticsChart(mode) {
-const ctx = document.getElementById('monthlyChart').getContext('2d');
+const canvas = document.getElementById('monthlyChart');
+if(!canvas) return;
+const ctx = canvas.getContext('2d');
 const spots = window.spots || [];
 const counts = {};
 
-if (mode === 'monthly') {
+// ★ 集計の基準を「ピンを追加した日」ではなく「記録している訪問日（s.date）」のみにする
 spots.forEach(s => {
-const dateStr = s.date || (s.id ? new Date(parseInt(s.id)).toISOString().split('T')[0] : '');
-if (dateStr && dateStr.length >= 7) {
-const key = dateStr.substring(0, 7);
+// 訪問日が未入力のものはグラフから除外
+if (!s.date || s.date.trim() === '') return;
+
+if (mode === 'monthly') {
+if (s.date.length >= 7) {
+const key = s.date.substring(0, 7);
 counts[key] = (counts[key] || 0) + 1;
 }
-});
 } else if (mode === 'weekly') {
-spots.forEach(s => {
-const dateStr = s.date || (s.id ? new Date(parseInt(s.id)).toISOString().split('T')[0] : '');
-if (dateStr) {
-const d = new Date(dateStr);
+const d = new Date(s.date);
 if (!isNaN(d.getTime())) {
 const key = getISOWeekKey(d);
 counts[key] = (counts[key] || 0) + 1;
 }
-}
-});
 } else if (mode === 'daily') {
-spots.forEach(s => {
-const dateStr = s.date || (s.id ? new Date(parseInt(s.id)).toISOString().split('T')[0] : '');
-if (dateStr && dateStr.length >= 10) {
-counts[dateStr] = (counts[dateStr] || 0) + 1;
+if (s.date.length >= 10) {
+counts[s.date] = (counts[s.date] || 0) + 1;
+}
 }
 });
-}
 
 let sortedKeys = Object.keys(counts).sort();
 
@@ -1132,7 +1144,7 @@ if (chartInstance) {
 chartInstance.destroy();
 }
 
-// ★ グラフのラベルを「増加数」に変更してわかりやすく
+// ★ ラベルを増加数に変更
 const chartLabel = mode === 'monthly' ? '月間増加数' : (mode === 'weekly' ? '週間増加数' : '日間増加数');
 
 chartInstance = new Chart(ctx, {
@@ -1304,7 +1316,7 @@ const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet;
 const isSpecial = spot.genre === 'want' || spot.genre === 'today';
 const stars = isSpecial ? genreInfo.label : '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating);
 
-// ★ 縦長写真が切れないように表示形式を変更
+// ★ 写真が縦長でも切れないように表示形式を変更（object-contain）
 const content = `
 <div class="space-y-3">
 ${spot.photo ? `
