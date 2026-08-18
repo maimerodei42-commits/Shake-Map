@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
-<!-- ★ グラフ描画ライブラリを最新の安定版に修正 -->
+<!-- Chart.js for Analytics -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -745,6 +745,7 @@ searchMarker = null;
 }
 }
 
+// ★ 住所や番地だけでもヒットしやすく検索を強化
 async function searchLocation() {
 const query = document.getElementById('searchInput').value.trim();
 const resultsDiv = document.getElementById('searchResults');
@@ -757,11 +758,12 @@ resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center flex 
 resultsDiv.classList.remove('hidden');
 
 try {
-const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=jp&limit=5&accept-language=ja`);
+// 番地検索に強いNominatimのパラメータ（q=）を使用
+const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=jp&limit=10&accept-language=ja`);
 const data = await response.json();
 
 if (data.length === 0) {
-resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">見つかりませんでした</div>`;
+resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">見つかりませんでした。<br>「〇〇県〇〇市 1-13-1」のように市町村名も入れると見つかりやすいです！</div>`;
 return;
 }
 
@@ -769,20 +771,24 @@ resultsDiv.innerHTML = '';
 data.forEach(item => {
 const lat = parseFloat(item.lat);
 const lon = parseFloat(item.lon);
-const name = item.display_name.split(',')[0];
+
+// 表示名を見やすく調整
+const nameParts = item.display_name.split(',');
+const name = nameParts[0];
+const addressDetail = nameParts.slice(1, 4).join(',').trim();
 const prefName = findNearestPrefecture(lat, lon);
 
 const div = document.createElement('div');
 div.className = 'p-3 hover:bg-slate-50 cursor-pointer transition text-xs flex flex-col gap-0.5';
 div.innerHTML = `
 <div class="font-bold text-slate-800">${name}</div>
-<div class="text-[10px] text-slate-500 truncate">${item.display_name}</div>
+<div class="text-[10px] text-slate-500 truncate">${addressDetail || item.display_name}</div>
 `;
 div.onclick = function() {
 resultsDiv.classList.add('hidden');
 removeSearchMarker();
 
-map.flyTo([lat, lon], 16, { duration: 1.5, easeLinearity: 0.2 });
+map.flyTo([lat, lon], 17, { duration: 1.5, easeLinearity: 0.2 });
 
 const searchIcon = L.divIcon({
 html: `<div class="custom-pin search-pin" style="background-color: #f43f5e; width: 28px; height: 28px; border-width: 2px;">
@@ -971,9 +977,7 @@ if (t === tab) {
 btn.className = "flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition";
 view.classList.remove('hidden');
 
-// タブが切り替わって表示されてからグラフを描画（真っ白バグ防止）
 if(tab === 'chart'){
-// 描画のタイミングをほんの少し遅らせることで確実にサイズを取得させる
 setTimeout(() => {
 renderAnalyticsChart(currentChartMode);
 }, 10);
@@ -1022,16 +1026,13 @@ container.innerHTML = html;
 function renderSpotList() {
 const container = document.getElementById('spotListContainer');
 const spots = [...(window.spots || [])];
-// 訪問日の新しい順に並び替え
 spots.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
 let html = '';
 spots.forEach(s => {
 const gInfo = GENRE_CONFIG[s.genre] || GENRE_CONFIG.gourmet;
-// 写真がある場合はアイコンを表示
 const photoIcon = s.photo ? `<i data-lucide="image" class="w-3.5 h-3.5 text-slate-400 ml-1"></i>` : '';
 
-// ★ 場所は県のみ、店名と日付をシンプルに表示
 html += `
 <div onclick="closeChartModal(); openDetailModal('${s.id}')" class="p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/20 cursor-pointer transition flex items-center justify-between gap-3 text-xs">
 <div class="flex items-center gap-3 overflow-hidden flex-1">
@@ -1090,9 +1091,7 @@ const ctx = canvas.getContext('2d');
 const spots = window.spots || [];
 const counts = {};
 
-// ★ 集計の基準を「ピンを追加した日」ではなく「記録している訪問日（s.date）」のみにする
 spots.forEach(s => {
-// 訪問日が未入力のものはグラフから除外
 if (!s.date || s.date.trim() === '') return;
 
 if (mode === 'monthly') {
@@ -1144,7 +1143,6 @@ if (chartInstance) {
 chartInstance.destroy();
 }
 
-// ★ ラベルを増加数に変更
 const chartLabel = mode === 'monthly' ? '月間増加数' : (mode === 'weekly' ? '週間増加数' : '日間増加数');
 
 chartInstance = new Chart(ctx, {
@@ -1316,7 +1314,6 @@ const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet;
 const isSpecial = spot.genre === 'want' || spot.genre === 'today';
 const stars = isSpecial ? genreInfo.label : '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating);
 
-// ★ 写真が縦長でも切れないように表示形式を変更（object-contain）
 const content = `
 <div class="space-y-3">
 ${spot.photo ? `
