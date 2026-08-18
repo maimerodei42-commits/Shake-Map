@@ -20,7 +20,7 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <!-- Chart.js for Analytics -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/Chart.js"></script>
 <style>
 #map {
 height: calc(100vh - 200px);
@@ -122,8 +122,8 @@ scrollbar-width: none;
 <!-- Compact Inline Stats Strip -->
 <div class="flex items-center justify-between gap-1 text-[11px] bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-slate-600 overflow-x-auto no-scrollbar whitespace-nowrap">
 <div class="flex items-center gap-1">
-<span id="syncIndicator" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-<span id="statSyncStatus" onclick="forceCloudLogin()" class="font-bold text-amber-600 cursor-pointer underline hover:text-amber-700" title="タップしてクラウド接続">クラウド接続する</span>
+<span id="syncIndicator" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+<span id="statSyncStatus" class="font-bold text-blue-600">クラウド自動同期中</span>
 </div>
 <span class="text-slate-300">|</span>
 <div class="flex items-center gap-1">
@@ -359,10 +359,9 @@ toast.classList.add('opacity-0', 'pointer-events-none');
 }
 </script>
 
-<!-- ★★★ Firebase SDK Integration & 強制ログイン機能 ★★★ -->
+<!-- ★★★ 直結型・超安定ダイレクト同期プロンプト ★★★ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const myFirebaseConfig = {
@@ -374,95 +373,71 @@ messagingSenderId: "836003488202",
 appId: "1:836003488202:web:983a091d3ecd185fadef33"
 };
 
-let db, auth, spotsCollection;
-const APP_COLLECTION_PATH = 'shakemap-shared-data';
+window.spots = window.spots || [];
 
-if (myFirebaseConfig.apiKey) {
+try {
 const app = initializeApp(myFirebaseConfig);
-auth = getAuth(app);
-db = getFirestore(app);
+const db = getFirestore(app);
+// どの端末からも全く同じ場所に直結するよう、パスをシンプルに統一
+const spotsCollection = collection(db, 'spots');
 
-spotsCollection = collection(db, 'artifacts', APP_COLLECTION_PATH, 'public', 'data', 'spots');
-
-window.forceCloudLogin = async function() {
-document.getElementById('statSyncStatus').textContent = "接続中...";
-try {
-await signInAnonymously(auth);
-showToast("クラウドに接続しました！");
-} catch (e) {
-console.error("Auth error:", e);
-showToast("接続に失敗しました");
-}
-};
-
-const initAuth = async () => {
-try {
-await signInAnonymously(auth);
-} catch (e) {
-console.error("Auth error:", e);
-}
-};
-initAuth();
-
-onAuthStateChanged(auth, (user) => {
-if (user) {
-document.getElementById('statSyncStatus').textContent = "クラウド自動同期中";
-document.getElementById('statSyncStatus').className = "font-bold text-blue-600 cursor-default";
-document.getElementById('statSyncStatus').removeAttribute('onclick');
-document.getElementById('syncIndicator').classList.remove('bg-slate-400', 'bg-rose-500', 'bg-amber-400');
-document.getElementById('syncIndicator').classList.add('bg-blue-500', 'animate-pulse');
-
+// リアルタイムリスナー（自動同期）
 onSnapshot(spotsCollection, (snapshot) => {
 const cloudSpots = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
 
 const spotMap = new Map();
-(window.spots || []).forEach(s => spotMap.set(s.id, s));
+window.spots.forEach(s => spotMap.set(s.id, s));
 cloudSpots.forEach(s => spotMap.set(s.id, s));
 
 window.spots = Array.from(spotMap.values());
 window.saveLocalStorageSpots();
 
-window.renderMarkers();
-window.updateProgress();
-window.updateAnalytics();
-}, err => {
-console.error("Firestore sync error:", err);
-document.getElementById('statSyncStatus').textContent = "同期エラー";
-document.getElementById('statSyncStatus').className = "font-bold text-rose-600";
-document.getElementById('syncIndicator').classList.remove('bg-blue-500', 'animate-pulse');
-document.getElementById('syncIndicator').classList.add('bg-rose-500');
-});
-} else {
-document.getElementById('statSyncStatus').textContent = "クラウド接続する";
-document.getElementById('statSyncStatus').className = "font-bold text-amber-600 cursor-pointer underline";
-document.getElementById('statSyncStatus').setAttribute('onclick', 'forceCloudLogin()');
-document.getElementById('syncIndicator').classList.remove('bg-blue-500', 'animate-pulse');
-document.getElementById('syncIndicator').classList.add('bg-amber-400');
+if (typeof window.renderMarkers === 'function') window.renderMarkers();
+if (typeof window.updateProgress === 'function') window.updateProgress();
+if (typeof window.updateAnalytics === 'function') window.updateAnalytics();
+
+const statusEl = document.getElementById('statSyncStatus');
+if (statusEl) {
+statusEl.textContent = "クラウド自動同期中";
+statusEl.className = "font-bold text-blue-600";
+}
+const indicatorEl = document.getElementById('syncIndicator');
+if (indicatorEl) {
+indicatorEl.className = "w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse";
+}
+}, (err) => {
+console.error("Cloud sync error:", err);
+const statusEl = document.getElementById('statSyncStatus');
+if (statusEl) {
+statusEl.textContent = "同期エラー";
+statusEl.className = "font-bold text-rose-600";
 }
 });
-} else {
-console.warn("クラウド設定が見つかりません。");
-document.getElementById('statSyncStatus').textContent = "ローカル保存のみ";
-document.getElementById('statSyncStatus').className = "font-bold text-slate-500";
-document.getElementById('syncIndicator').classList.remove('bg-blue-500', 'animate-pulse');
-document.getElementById('syncIndicator').classList.add('bg-slate-400');
-}
 
 window.saveSpotToCloud = async function(spot) {
-if (db && spotsCollection) {
 try {
 await setDoc(doc(spotsCollection, spot.id), spot);
-} catch (e) {}
+} catch (e) {
+console.error("Save error:", e);
 }
 };
 
 window.deleteSpotFromCloud = async function(id) {
-if (db && spotsCollection) {
 try {
 await deleteDoc(doc(spotsCollection, id));
-} catch (e) {}
+} catch (e) {
+console.error("Delete error:", e);
 }
 };
+
+} catch (e) {
+console.error("Firebase init error:", e);
+const statusEl = document.getElementById('statSyncStatus');
+if (statusEl) {
+statusEl.textContent = "ローカル保存のみ";
+statusEl.className = "font-bold text-slate-500";
+}
+}
 </script>
 
 <script>
@@ -1299,7 +1274,6 @@ document.getElementById('detailActionBox').classList.add('hidden');
 
 function cancelDeleteUI() {
 document.getElementById('deleteConfirmBox').classList.add('hidden');
-document.getElementById('detailActionBox').classList.add('hidden'); // bug fix
 document.getElementById('detailActionBox').classList.remove('hidden');
 }
 
