@@ -43,9 +43,27 @@ font-weight: bold;
 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 border: 1.5px solid white;
 transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+position: relative;
 }
 .custom-pin:hover {
 transform: scale(1.25);
+}
+.pin-badge {
+position: absolute;
+top: -5px;
+right: -5px;
+background-color: #f43f5e;
+color: white;
+font-size: 10px;
+font-weight: bold;
+width: 18px;
+height: 18px;
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+border: 1.5px solid white;
+box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 .search-pin {
 animation: bounce 0.8s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
@@ -104,8 +122,8 @@ scrollbar-width: none;
 <!-- Compact Inline Stats Strip -->
 <div class="flex items-center justify-between gap-1 text-[11px] bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-slate-600 overflow-x-auto no-scrollbar whitespace-nowrap">
 <div class="flex items-center gap-1">
-<span id="syncIndicator" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-<span id="statSyncStatus" class="font-bold text-blue-600">クラウド自動同期中</span>
+<span id="syncIndicator" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+<span id="statSyncStatus" class="font-bold text-slate-500">接続確認中</span>
 </div>
 <span class="text-slate-300">|</span>
 <div class="flex items-center gap-1">
@@ -176,6 +194,9 @@ scrollbar-width: none;
 <button onclick="filterGenre('want')" class="genre-btn px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium transition flex items-center gap-1">
 <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>行きたい！
 </button>
+<button onclick="filterGenre('today')" class="genre-btn px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-medium transition flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>今日の俺
+</button>
 </div>
 </div>
 
@@ -200,7 +221,7 @@ scrollbar-width: none;
 <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-500"></i>
 <span>ピン登録数の統計</span>
 </h3>
-<p class="text-xs text-slate-500 mb-3">2人の思い出の蓄積推移グラフ（行きたい！は除く）</p>
+<p class="text-xs text-slate-500 mb-3">2人の思い出の蓄積推移グラフ（行きたい！・今日の俺は除く）</p>
 
 <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl mb-4 text-xs font-semibold">
 <button id="chartTabMonthly" onclick="switchChartMode('monthly')" class="flex-1 py-1.5 rounded-lg bg-white shadow-sm text-slate-800 transition">月別</button>
@@ -262,6 +283,7 @@ scrollbar-width: none;
 <option value="sightseeing">遊び (青)</option>
 <option value="souvenir">フォト (黄)</option>
 <option value="want">行きたい！ (灰)</option>
+<option value="today">今日の俺 (緑)</option>
 </select>
 </div>
 </div>
@@ -337,13 +359,12 @@ toast.classList.add('opacity-0', 'pointer-events-none');
 }
 </script>
 
-<!-- ★★★ Firebase SDK Integration (あつきさんの鍵入り) ★★★ -->
+<!-- ★★★ Firebase SDK Integration ★★★ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// あつきさんの本物の鍵です！
 const myFirebaseConfig = {
 apiKey: "AIzaSyB3EdYpV25yrAHFLguV5QgQcOclJBQcSM0",
 authDomain: "shake-map-f7171.firebaseapp.com",
@@ -354,7 +375,6 @@ appId: "1:836003488202:web:983a091d3ecd185fadef33"
 };
 
 let db, auth, spotsCollection;
-// データを保存する場所の名前（変更不要）
 const APP_COLLECTION_PATH = 'shakemap-shared-data';
 
 if (myFirebaseConfig.apiKey) {
@@ -362,7 +382,6 @@ const app = initializeApp(myFirebaseConfig);
 auth = getAuth(app);
 db = getFirestore(app);
 
-// 指定したコレクションに接続
 spotsCollection = collection(db, 'artifacts', APP_COLLECTION_PATH, 'public', 'data', 'spots');
 
 const initAuth = async () => {
@@ -376,7 +395,11 @@ initAuth();
 
 onAuthStateChanged(auth, (user) => {
 if (user) {
-// クラウドデータとのリアルタイム同期
+document.getElementById('statSyncStatus').textContent = "クラウド自動同期中";
+document.getElementById('statSyncStatus').className = "font-bold text-blue-600";
+document.getElementById('syncIndicator').classList.remove('bg-slate-400', 'bg-rose-500', 'bg-amber-400');
+document.getElementById('syncIndicator').classList.add('bg-blue-500', 'animate-pulse');
+
 onSnapshot(spotsCollection, (snapshot) => {
 const cloudSpots = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
 
@@ -397,10 +420,15 @@ document.getElementById('statSyncStatus').className = "font-bold text-rose-600";
 document.getElementById('syncIndicator').classList.remove('bg-blue-500', 'animate-pulse');
 document.getElementById('syncIndicator').classList.add('bg-rose-500');
 });
+} else {
+document.getElementById('statSyncStatus').textContent = "ログイン未完了";
+document.getElementById('statSyncStatus').className = "font-bold text-amber-600";
+document.getElementById('syncIndicator').classList.remove('bg-blue-500', 'animate-pulse');
+document.getElementById('syncIndicator').classList.add('bg-amber-400');
 }
 });
 } else {
-console.warn("クラウド設定が見つかりません。ローカル保存のみで動作します。");
+console.warn("クラウド設定が見つかりません。");
 document.getElementById('statSyncStatus').textContent = "ローカル保存のみ";
 document.getElementById('statSyncStatus').className = "font-bold text-slate-500";
 document.getElementById('syncIndicator').classList.remove('bg-blue-500', 'animate-pulse');
@@ -506,12 +534,12 @@ const PREFECTURES = [
 { name: "沖縄県", lat: 26.2124, lng: 127.6809, zoom: 9, areas: [{ name: "那覇市", lat: 26.2124, lng: 127.6809, zoom: 13 }]}
 ];
 
-// ★ ジャンルに「行きたい！（灰色）」を追加
 const GENRE_CONFIG = {
 gourmet: { label: "ご飯", color: "#ef4444", icon: "utensils" },
 sightseeing: { label: "遊び", color: "#3b82f6", icon: "sparkles" },
 souvenir: { label: "フォト", color: "#f59e0b", icon: "camera" },
-want: { label: "行きたい！", color: "#94a3b8", icon: "navigation" } // 灰色
+want: { label: "行きたい！", color: "#94a3b8", icon: "navigation" },
+today: { label: "今日の俺", color: "#10b981", icon: "user-check" }
 };
 
 let map;
@@ -771,23 +799,44 @@ resultsDiv.innerHTML = `<div class="p-3 text-xs text-rose-500 text-center">検�
 }
 }
 
+// ★ 同じ位置のピンをグループ化して、複数ある場合はバッジを表示＆リスト選択できるようにする
 window.renderMarkers = function() {
 if (!map) return;
 markers.forEach(m => map.removeLayer(m));
 markers = [];
 
+const filteredSpots = (window.spots || []).filter(spot => {
+if (currentFilter !== 'all' && spot.genre !== currentFilter) return true; // フィルタ中でも同じ場所の他ジャンルを見られるように全体からグループ化するか、フィルタ適用するか
+return true;
+});
+
+// 緯度・経度がほぼ同じ（小数点4桁≒数メートル以内）のスポットをまとめる
+const locationMap = new Map();
 (window.spots || []).forEach(spot => {
 if (currentFilter !== 'all' && spot.genre !== currentFilter) return;
+const key = `${spot.lat.toFixed(4)},${spot.lng.toFixed(4)}`;
+if (!locationMap.has(key)) {
+locationMap.set(key, []);
+}
+locationMap.get(key).push(spot);
+});
 
-const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.other;
-// ★ 「行きたい！」のピンは少し小さくする (通常24px -> 20px)
-const isWant = spot.genre === 'want';
-const pinSize = isWant ? 20 : 24;
-const iconSize = isWant ? 11 : 13;
-const anchorSize = isWant ? 10 : 12;
+locationMap.forEach((spotsAtLoc, key) => {
+// 日付が新しい順に並び替え
+spotsAtLoc.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+const primarySpot = spotsAtLoc[0];
+const genreInfo = GENRE_CONFIG[primarySpot.genre] || GENRE_CONFIG.gourmet;
+const isSpecial = primarySpot.genre === 'want' || primarySpot.genre === 'today';
+const pinSize = isSpecial ? 20 : 24;
+const iconSize = isSpecial ? 11 : 13;
+const anchorSize = isSpecial ? 10 : 12;
+
+const countBadge = spotsAtLoc.length > 1 ? `<div class="pin-badge">${spotsAtLoc.length}</div>` : '';
 
 const iconHtml = `<div class="custom-pin" style="background-color: ${genreInfo.color}; width: ${pinSize}px; height: ${pinSize}px;">
 <i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>
+${countBadge}
 </div>`;
 
 const customIcon = L.divIcon({
@@ -797,10 +846,14 @@ iconSize: [pinSize, pinSize],
 iconAnchor: [anchorSize, anchorSize]
 });
 
-const marker = L.marker([spot.lat, spot.lng], { icon: customIcon }).addTo(map);
+const marker = L.marker([primarySpot.lat, primarySpot.lng], { icon: customIcon }).addTo(map);
 marker.on('click', (e) => {
 L.DomEvent.stopPropagation(e);
-openDetailModal(spot.id);
+if (spotsAtLoc.length === 1) {
+openDetailModal(spotsAtLoc[0].id);
+} else {
+openMultiSpotModal(spotsAtLoc);
+}
 });
 markers.push(marker);
 });
@@ -808,9 +861,45 @@ markers.push(marker);
 lucide.createIcons();
 };
 
+// 複数ピンが重なっているときにどれを見るか選ぶモーダル
+function openMultiSpotModal(spots) {
+const content = `
+<div class="space-y-3">
+<h3 class="text-base font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+<i data-lucide="layers" class="w-4 h-4 text-rose-500"></i>
+<span>この場所の記録 (${spots.length件})</span>
+</h3>
+<div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+${spots.map(s => {
+const gInfo = GENRE_CONFIG[s.genre] || GENRE_CONFIG.gourmet;
+return `
+<div onclick="closeDetailModal(); openDetailModal('${s.id}')" class="p-2.5 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/30 cursor-pointer transition flex items-center justify-between gap-2">
+<div class="flex items-center gap-2 overflow-hidden">
+<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${gInfo.color}"></span>
+<div class="truncate">
+<div class="font-bold text-xs text-slate-800 truncate">${s.name}</div>
+<div class="text-[10px] text-slate-400">${s.date || '日付未設定'} / by ${s.author}</div>
+</div>
+</div>
+<i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+</div>
+`;
+}).join('')}
+</div>
+<div class="pt-2 text-right">
+<button onclick="closeDetailModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-lg font-medium transition">
+閉じる
+</button>
+</div>
+</div>
+`;
+document.getElementById('detailContent').innerHTML = content;
+document.getElementById('detailModal').classList.remove('hidden');
+lucide.createIcons();
+}
+
 window.updateProgress = function() {
-// ★ 「行きたい！」(want) を除外したスポットのみで制覇度を計算
-const visitedSpots = (window.spots || []).filter(s => s.genre !== 'want');
+const visitedSpots = (window.spots || []).filter(s => s.genre !== 'want' && s.genre !== 'today');
 const visitedPrefs = new Set(visitedSpots.map(s => s.pref));
 const count = visitedPrefs.size;
 const percent = ((count / 47) * 100).toFixed(1);
@@ -895,8 +984,7 @@ return `${date.getFullYear()}-W${weekNum < 10 ? '0' + weekNum : weekNum}`;
 
 function renderAnalyticsChart(mode) {
 const ctx = document.getElementById('monthlyChart').getContext('2d');
-// 行きたい！(want) はグラフから除外する
-const spots = (window.spots || []).filter(s => s.genre !== 'want');
+const spots = (window.spots || []).filter(s => s.genre !== 'want' && s.genre !== 'today');
 const counts = {};
 
 if (mode === 'monthly') {
@@ -1019,14 +1107,12 @@ document.getElementById('spotModal').classList.remove('hidden');
 lucide.createIcons();
 }
 
-// ★ あとから情報を編集する機能 ★
 window.editSpot = function(id) {
 const spot = (window.spots || []).find(s => s.id === id);
 if (!spot) return;
 
 closeDetailModal();
 
-// 既存のデータをフォームにセットする
 document.getElementById('spotId').value = spot.id;
 document.getElementById('spotLat').value = spot.lat;
 document.getElementById('spotLng').value = spot.lng;
@@ -1038,7 +1124,6 @@ document.getElementById('spotRating').value = spot.rating || 5;
 document.getElementById('spotDate').value = spot.date || new Date().toISOString().split('T')[0];
 document.getElementById('spotComment').value = spot.comment || '';
 
-// 写真プレビューの復元
 tempPhotoBase64 = spot.photo || null;
 if (tempPhotoBase64) {
 document.getElementById('photoPreview').src = tempPhotoBase64;
@@ -1110,11 +1195,10 @@ lng: parseFloat(document.getElementById('spotLng').value),
 photo: tempPhotoBase64
 };
 
-// 既存のピンなら上書き（編集）、なければ追加
 const index = (window.spots || []).findIndex(s => s.id === id);
 let isEdit = false;
 if (index >= 0) {
-if (!tempPhotoBase64) newSpot.photo = window.spots[index].photo; // 写真を変えなかった場合は維持
+if (!tempPhotoBase64) newSpot.photo = window.spots[index].photo;
 window.spots[index] = newSpot;
 isEdit = true;
 } else {
@@ -1136,8 +1220,9 @@ function openDetailModal(id) {
 const spot = (window.spots || []).find(s => s.id === id);
 if (!spot) return;
 
-const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.other;
-const stars = spot.genre === 'want' ? '行きたい場所' : '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating);
+const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet;
+const isSpecial = spot.genre === 'want' || spot.genre === 'today';
+const stars = isSpecial ? genreInfo.label : '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating);
 
 const content = `
 <div class="space-y-3">
@@ -1184,7 +1269,6 @@ ${spot.comment}
 
 <div id="detailActionBox" class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
 <div class="flex gap-1.5">
-<!-- ★ 編集ボタンを追加 ★ -->
 <button onclick="window.editSpot('${spot.id}')" class="text-indigo-500 hover:text-indigo-700 font-medium flex items-center gap-1 p-1">
 <i data-lucide="edit-3" class="w-4 h-4"></i> 編集
 </button>
