@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -153,7 +152,7 @@ scrollbar-width: none;
 検索
 </button>
 </div>
-<div id="searchResults" class="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-50 hidden max-h-52 overflow-y-auto divide-y divide-slate-100"></div>
+<div id="searchResults" class="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-50 hidden max-h-56 overflow-y-auto divide-y divide-slate-100"></div>
 </div>
 
 <div class="bg-amber-50/80 rounded-lg p-1 border border-amber-100 flex flex-col justify-center">
@@ -193,7 +192,6 @@ scrollbar-width: none;
 <button onclick="filterGenre('today')" class="genre-btn px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-medium transition flex items-center gap-1">
 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>今日の俺
 </button>
-<!-- ★ 「その他」フィルターボタン追加 -->
 <button onclick="filterGenre('other')" class="genre-btn px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium transition flex items-center gap-1">
 <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>その他
 </button>
@@ -307,21 +305,21 @@ scrollbar-width: none;
 <option value="souvenir">フォト (黄)</option>
 <option value="want">行きたい！ (灰)</option>
 <option value="today">今日の俺 (緑)</option>
-<!-- ★ モーダルのジャンル選択にも「その他」を追加 -->
 <option value="other">その他 (紫)</option>
 </select>
 </div>
 </div>
 
+<!-- ★ 満足度ラベルの変更 -->
 <div class="grid grid-cols-2 gap-3">
 <div>
 <label class="block text-xs font-bold text-slate-600 mb-1">満足度 (★1〜5)</label>
 <select id="spotRating" class="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:outline-none">
-<option value="5">★★★★★ (大満足)</option>
-<option value="4">★★★★☆ (満足)</option>
-<option value="3">★★★☆☆ (普通)</option>
-<option value="2">★★☆☆☆ (まあまあ)</option>
-<option value="1">★☆☆☆☆ (うーん)</option>
+<option value="5">★★★★★ (殿堂)</option>
+<option value="4">★★★★☆ (大満足)</option>
+<option value="3">★★★☆☆ (満足)</option>
+<option value="2">★★☆☆☆ (いいね)</option>
+<option value="1">★☆☆☆☆ (OK)</option>
 </select>
 </div>
 <div>
@@ -549,7 +547,6 @@ const PREFECTURES = [
 { name: "沖縄県", lat: 26.2124, lng: 127.6809, zoom: 9, areas: [{ name: "那覇市", lat: 26.2124, lng: 127.6809, zoom: 13 }]}
 ];
 
-// ★ ジャンル設定に「その他」を追加
 const GENRE_CONFIG = {
 gourmet: { label: "ご飯", color: "#ef4444", icon: "utensils" },
 sightseeing: { label: "遊び", color: "#3b82f6", icon: "sparkles" },
@@ -557,6 +554,14 @@ souvenir: { label: "フォト", color: "#f59e0b", icon: "camera" },
 want: { label: "行きたい！", color: "#94a3b8", icon: "navigation" },
 today: { label: "今日の俺", color: "#10b981", icon: "user-check" },
 other: { label: "その他", color: "#a855f7", icon: "bed-double" }
+};
+
+const RATING_LABELS = {
+5: "★★★★★ 殿堂",
+4: "★★★★☆ 大満足",
+3: "★★★☆☆ 満足",
+2: "★★☆☆☆ いいね",
+1: "★☆☆☆☆ OK"
 };
 
 let map;
@@ -747,47 +752,121 @@ searchMarker = null;
 }
 }
 
+// ★ Googleマップ風の柔軟な検索（登録済みスポット＋広範囲Web検索）
 async function searchLocation() {
-const query = document.getElementById('searchInput').value.trim();
+const queryRaw = document.getElementById('searchInput').value.trim();
 const resultsDiv = document.getElementById('searchResults');
 
-if (!query) return;
+if (!queryRaw) return;
 
 resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center flex items-center justify-center gap-2">
 <span class="animate-spin text-rose-500">⌛</span> 検索中...
 </div>`;
 resultsDiv.classList.remove('hidden');
 
-try {
-const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=jp&limit=10&accept-language=ja`);
-const data = await response.json();
+const queryLower = queryRaw.toLowerCase();
+const resultsList = [];
+const seenKeys = new Set();
 
-if (data.length === 0) {
-resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">見つかりませんでした。<br>「〇〇県〇〇市 1-13-1」のように市町村名も入れると見つかりやすいです！</div>`;
+// 1. 登録済みスポットから部分一致するものを最優先抽出
+(window.spots || []).forEach(spot => {
+const nameLower = (spot.name || '').toLowerCase();
+const prefLower = (spot.pref || '').toLowerCase();
+const commentLower = (spot.comment || '').toLowerCase();
+
+if (nameLower.includes(queryLower) || prefLower.includes(queryLower) || commentLower.includes(queryLower)) {
+const key = `${spot.lat.toFixed(4)},${spot.lng.toFixed(4)}`;
+if (!seenKeys.has(key)) {
+seenKeys.add(key);
+resultsList.push({
+isLocal: true,
+name: spot.name,
+subText: `【登録済】${spot.pref} / by ${spot.author || 'あつき'}`,
+lat: spot.lat,
+lon: spot.lng,
+prefName: spot.pref,
+spotId: spot.id
+});
+}
+}
+});
+
+// 2. OpenStreetMap Nominatim で広範囲・曖昧検索
+try {
+// クエリの揺らぎ（スペース区切りやカタカナ/漢字）に対応
+const queriesToTry = [queryRaw];
+if (queryRaw.includes(' ')) {
+queriesToTry.push(queryRaw.replace(/\s+/g, ''));
+}
+
+for (const q of queriesToTry) {
+const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=jp&limit=12&addressdetails=1&accept-language=ja`;
+const res = await fetch(url);
+const data = await res.json();
+
+data.forEach(item => {
+const lat = parseFloat(item.lat);
+const lon = parseFloat(item.lon);
+const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+
+if (!seenKeys.has(key)) {
+seenKeys.add(key);
+const nameParts = item.display_name.split(',');
+const title = nameParts[0];
+const detail = nameParts.slice(1, 4).join(', ').trim();
+const pref = findNearestPrefecture(lat, lon);
+
+resultsList.push({
+isLocal: false,
+name: title,
+subText: detail || item.display_name,
+lat: lat,
+lon: lon,
+prefName: pref
+});
+}
+});
+
+if (resultsList.length >= 10) break;
+}
+} catch (err) {
+console.warn("Web search error:", err);
+}
+
+if (resultsList.length === 0) {
+resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">見つかりませんでした。<br>「〇〇市 〇〇」のように地名を入れると見つかりやすいです！</div>`;
 return;
 }
 
 resultsDiv.innerHTML = '';
-data.forEach(item => {
-const lat = parseFloat(item.lat);
-const lon = parseFloat(item.lon);
-
-const nameParts = item.display_name.split(',');
-const name = nameParts[0];
-const addressDetail = nameParts.slice(1, 4).join(',').trim();
-const prefName = findNearestPrefecture(lat, lon);
-
+resultsList.slice(0, 15).forEach(item => {
 const div = document.createElement('div');
-div.className = 'p-3 hover:bg-slate-50 cursor-pointer transition text-xs flex flex-col gap-0.5';
+div.className = 'p-3 hover:bg-slate-50 cursor-pointer transition text-xs flex items-center justify-between gap-2';
+
+const badge = item.isLocal ? `<span class="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">登録済</span>` : '';
+
 div.innerHTML = `
-<div class="font-bold text-slate-800">${name}</div>
-<div class="text-[10px] text-slate-500 truncate">${addressDetail || item.display_name}</div>
+<div class="flex-1 overflow-hidden">
+<div class="font-bold text-slate-800 flex items-center gap-1.5 truncate">
+<span class="truncate">${item.name}</span>
+${badge}
+</div>
+<div class="text-[10px] text-slate-400 truncate mt-0.5">${item.subText}</div>
+</div>
+<i data-lucide="map-pin" class="w-4 h-4 text-slate-400 shrink-0"></i>
 `;
+
 div.onclick = function() {
 resultsDiv.classList.add('hidden');
 removeSearchMarker();
 
-map.flyTo([lat, lon], 17, { duration: 1.5, easeLinearity: 0.2 });
+if (item.isLocal && item.spotId) {
+map.flyTo([item.lat, item.lon], 16, { duration: 1.5, easeLinearity: 0.2 });
+setTimeout(() => openDetailModal(item.spotId), 500);
+return;
+}
+
+map.flyTo([item.lat, item.lon], 17, { duration: 1.5, easeLinearity: 0.2 });
 
 const searchIcon = L.divIcon({
 html: `<div class="custom-pin search-pin" style="background-color: #f43f5e; width: 28px; height: 28px; border-width: 2px;">
@@ -798,25 +877,24 @@ iconSize: [28, 28],
 iconAnchor: [14, 14]
 });
 
-searchMarker = L.marker([lat, lon], { icon: searchIcon }).addTo(map);
+searchMarker = L.marker([item.lat, item.lon], { icon: searchIcon }).addTo(map);
 lucide.createIcons();
 
 const popupContent = `
 <div class="p-1 text-center font-sans">
-<div class="font-bold text-sm text-slate-800 mb-1">${name}</div>
-<div class="text-xs text-slate-500 mb-2">${prefName}</div>
-<button onclick="openAddModal(${lat}, ${lon}, '${prefName}', '${name.replace(/'/g, "\\'")}')" class="bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition">
+<div class="font-bold text-sm text-slate-800 mb-1">${item.name}</div>
+<div class="text-xs text-slate-500 mb-2">${item.prefName}</div>
+<button onclick="openAddModal(${item.lat}, ${item.lon}, '${item.prefName}', '${item.name.replace(/'/g, "\\'")}')" class="bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow transition">
 ここに思い出を追加
 </button>
 </div>
 `;
 searchMarker.bindPopup(popupContent, { closeButton: false }).openPopup();
 };
+
 resultsDiv.appendChild(div);
 });
-} catch (err) {
-resultsDiv.innerHTML = `<div class="p-3 text-xs text-rose-500 text-center">検索エラーが発生しました</div>`;
-}
+lucide.createIcons();
 }
 
 window.renderMarkers = function() {
@@ -826,7 +904,6 @@ markers = [];
 
 const locationMap = new Map();
 (window.spots || []).forEach(spot => {
-// ★ 「すべて」選択時は「その他」を除外する裏メニュー仕様
 if (currentFilter === 'all') {
 if (spot.genre === 'other') return;
 } else {
@@ -916,7 +993,6 @@ lucide.createIcons();
 }
 
 window.updateProgress = function() {
-// ★ 「その他」もプログレス（制覇度）から除外
 const visitedSpots = (window.spots || []).filter(s => s.genre !== 'want' && s.genre !== 'today' && s.genre !== 'other');
 const visitedPrefs = new Set(visitedSpots.map(s => s.pref));
 const count = visitedPrefs.size;
@@ -926,7 +1002,6 @@ document.getElementById('progressStats').textContent = `${count}/47 (${percent}%
 document.getElementById('progressBar').style.width = `${percent}%`;
 };
 
-// ★ 前日比の計算を完全に削除してスッキリ
 window.updateAnalytics = function() {
 const spots = window.spots || [];
 document.getElementById('statTotalPins').textContent = `${spots.length}個`;
@@ -979,7 +1054,6 @@ const counts = {};
 PREFECTURES.forEach(p => counts[p.name] = 0);
 
 (window.spots || []).forEach(s => {
-// ★ 「その他」は県別カウントからも除外
 if (s.genre === 'want' || s.genre === 'today' || s.genre === 'other') return;
 if (s.pref && counts[s.pref] !== undefined) {
 counts[s.pref]++;
@@ -1009,10 +1083,9 @@ function renderSpotList() {
 const container = document.getElementById('spotListContainer');
 let spots = [...(window.spots || [])];
 
-// ★ 選択中のフィルター状態をリストにも反映させる
 spots = spots.filter(s => {
 if (currentFilter === 'all') {
-return s.genre !== 'other'; // すべての時はその他を除外
+return s.genre !== 'other';
 } else {
 return s.genre === currentFilter;
 }
@@ -1084,7 +1157,6 @@ const spots = window.spots || [];
 const counts = {};
 
 spots.forEach(s => {
-// ★ 「その他」をグラフ集計からも除外
 if (s.genre === 'want' || s.genre === 'today' || s.genre === 'other') return;
 if (!s.date || s.date.trim() === '') return;
 
@@ -1306,7 +1378,8 @@ if (!spot) return;
 
 const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet;
 const isSpecial = spot.genre === 'want' || spot.genre === 'today' || spot.genre === 'other';
-const stars = isSpecial ? genreInfo.label : '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating);
+// ★ 殿堂・大満足などの星評価テキストを表示
+const stars = isSpecial ? genreInfo.label : (RATING_LABELS[spot.rating] || '★'.repeat(spot.rating));
 
 const content = `
 <div class="space-y-3">
@@ -1330,7 +1403,7 @@ ${spot.author ? `<span class="text-[11px] bg-rose-50 text-rose-600 border border
 </p>
 </div>
 <div class="text-right shrink-0">
-<div class="text-amber-400 font-bold text-sm">${stars}</div>
+<div class="text-amber-500 font-bold text-xs">${stars}</div>
 <div class="text-[10px] text-slate-400 mt-0.5">${spot.date || '日付未設定'}</div>
 </div>
 </div>
