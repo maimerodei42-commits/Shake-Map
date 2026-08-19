@@ -50,7 +50,7 @@ position: relative;
 transform: scale(1.25);
 }
 
-/* ★ 「今日の俺」専用の目立つ波紋パルスアニメーション */
+/* 「今日の俺」専用の波紋パルスエフェクト */
 .today-pin-wrapper {
 position: relative;
 display: flex;
@@ -404,10 +404,10 @@ scrollbar-width: none;
 </div>
 </div>
 
-<!-- Detail View Modal -->
-<div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
-<div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto my-auto">
-<button onclick="closeDetailModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 z-20 bg-white/90 shadow-sm border border-slate-100 rounded-full transition">
+<!-- Detail View Modal (スライダー対応) -->
+<div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+<div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-4 sm:p-6 relative max-h-[92vh] overflow-y-auto my-auto">
+<button onclick="closeDetailModal()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 p-1.5 z-30 bg-white/90 shadow-sm border border-slate-100 rounded-full transition">
 <i data-lucide="x" class="w-5 h-5"></i>
 </button>
 <div id="detailContent"></div>
@@ -826,6 +826,7 @@ searchMarker = null;
 }
 }
 
+// Googleマップ風の柔軟な検索
 async function searchLocation() {
 const queryRaw = document.getElementById('searchInput').value.trim();
 const resultsDiv = document.getElementById('searchResults');
@@ -967,7 +968,7 @@ resultsDiv.appendChild(div);
 lucide.createIcons();
 }
 
-// ★ ピンの描画（「今日の俺」を目立たせる特別仕様）
+// ピン描画（同一地点に複数回記録がある場合はバッジ表示）
 window.renderMarkers = function() {
 if (!map) return;
 markers.forEach(m => map.removeLayer(m));
@@ -996,7 +997,6 @@ const genreInfo = GENRE_CONFIG[primarySpot.genre] || GENRE_CONFIG.gourmet;
 const isToday = primarySpot.genre === 'today';
 const isSpecial = primarySpot.genre === 'want' || primarySpot.genre === 'other';
 
-// ★「今日の俺」は32px（通常24px、行きたい20px）
 const pinSize = isToday ? 32 : (isSpecial ? 20 : 24);
 const iconSize = isToday ? 16 : (isSpecial ? 11 : 13);
 const anchorSize = Math.round(pinSize / 2);
@@ -1005,7 +1005,6 @@ const countBadge = spotsAtLoc.length > 1 ? `<div class="pin-badge">${spotsAtLoc.
 
 let iconHtml = '';
 if (isToday) {
-// 「今日の俺」専用：波紋パルスエフェクト付きアイコン
 iconHtml = `
 <div class="today-pin-wrapper" style="width:${pinSize}px; height:${pinSize}px;">
 <div class="today-pulse-ring"></div>
@@ -1032,7 +1031,6 @@ iconSize: [pinSize, pinSize],
 iconAnchor: [anchorSize, anchorSize]
 });
 
-// ★「今日の俺」は最前面（zIndexOffset: 1000）に表示
 const markerOptions = {
 icon: customIcon,
 zIndexOffset: isToday ? 1000 : 0
@@ -1041,53 +1039,14 @@ zIndexOffset: isToday ? 1000 : 0
 const marker = L.marker([primarySpot.lat, primarySpot.lng], markerOptions).addTo(map);
 marker.on('click', (e) => {
 L.DomEvent.stopPropagation(e);
-if (spotsAtLoc.length === 1) {
-openDetailModal(spotsAtLoc[0].id);
-} else {
-openMultiSpotModal(spotsAtLoc);
-}
+// 1つの詳細モーダルで過去の記録を横スライド表示
+openDetailModalGroup(spotsAtLoc);
 });
 markers.push(marker);
 });
 
 lucide.createIcons();
 };
-
-function openMultiSpotModal(spots) {
-const content = `
-<div class="space-y-3">
-<h3 class="text-base font-bold text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-2">
-<i data-lucide="layers" class="w-4 h-4 text-rose-500"></i>
-<span>この場所の記録 (${spots.length}件)</span>
-</h3>
-<div class="space-y-2 max-h-60 overflow-y-auto pr-1">
-${spots.map(s => {
-const gInfo = GENRE_CONFIG[s.genre] || GENRE_CONFIG.gourmet;
-return `
-<div onclick="closeDetailModal(); openDetailModal('${s.id}')" class="p-2.5 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/30 cursor-pointer transition flex items-center justify-between gap-2">
-<div class="flex items-center gap-2 overflow-hidden w-full">
-<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${gInfo.color}"></span>
-<div class="truncate flex-1">
-<div class="font-bold text-xs text-slate-800 truncate">${s.name}</div>
-<div class="text-[10px] text-slate-400">${s.date || '日付未設定'} / by ${s.author}</div>
-</div>
-</div>
-<i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
-</div>
-`;
-}).join('')}
-</div>
-<div class="pt-2 text-right">
-<button onclick="closeDetailModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-lg font-medium transition">
-閉じる
-</button>
-</div>
-</div>
-`;
-document.getElementById('detailContent').innerHTML = content;
-document.getElementById('detailModal').classList.remove('hidden');
-lucide.createIcons();
-}
 
 window.updateProgress = function() {
 const visitedSpots = (window.spots || []).filter(s => s.genre !== 'want' && s.genre !== 'today' && s.genre !== 'other');
@@ -1360,6 +1319,12 @@ document.getElementById('spotModal').classList.remove('hidden');
 lucide.createIcons();
 }
 
+// 同じ場所に新しい訪問記録を追加する
+window.addVisitToSameSpot = function(lat, lng, pref, name) {
+closeDetailModal();
+openAddModal(lat, lng, pref, name);
+};
+
 window.editSpot = function(id) {
 const spot = (window.spots || []).find(s => s.id === id);
 if (!spot) return;
@@ -1473,83 +1438,146 @@ function openDetailModal(id) {
 const spot = (window.spots || []).find(s => s.id === id);
 if (!spot) return;
 
+// 同じ場所にあるすべての記録を取得
+const spotsAtLoc = (window.spots || []).filter(s =>
+Math.abs(s.lat - spot.lat) < 0.0001 && Math.abs(s.lng - spot.lng) < 0.0001
+);
+openDetailModalGroup(spotsAtLoc.length > 0 ? spotsAtLoc : [spot]);
+}
+
+// ★ 横スライド式詳細モーダル（複数回訪問対応）
+function openDetailModalGroup(spots) {
+if (!spots || spots.length === 0) return;
+
+// 訪問日の新しい順に並び替え（スライドすると古い記録が出る）
+spots.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+const primarySpot = spots[0];
+
+let html = `
+<div class="space-y-3">
+<!-- ヘッダー部分 -->
+<div class="flex items-start justify-between gap-2 pr-8 pb-2 border-b border-slate-100">
+<div>
+<div class="flex items-center gap-1.5 flex-wrap mb-1">
+<h2 class="text-lg font-bold text-slate-800 leading-snug">${primarySpot.name}</h2>
+<span class="bg-rose-50 text-rose-600 border border-rose-100 px-2 py-0.5 rounded-full text-[10px] font-bold">
+訪問 ${spots.length}回
+</span>
+</div>
+<p class="text-xs text-slate-500 flex items-center gap-1">
+<i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-500"></i> ${primarySpot.pref}
+</p>
+</div>
+<button onclick="addVisitToSameSpot(${primarySpot.lat}, ${primarySpot.lng}, '${primarySpot.pref}', '${primarySpot.name.replace(/'/g, "\\'")}')" class="shrink-0 bg-rose-500 hover:bg-rose-600 text-white font-bold text-[11px] px-2.5 py-1.5 rounded-lg shadow-sm transition flex items-center gap-1">
+<i data-lucide="plus" class="w-3 h-3"></i>
+<span>別の日の記録を追加</span>
+</button>
+</div>
+
+${spots.length > 1 ? `
+<div class="flex items-center justify-between text-[11px] text-slate-400 px-1">
+<span class="flex items-center gap-1 text-slate-500 font-medium">
+<i data-lucide="chevrons-right" class="w-3.5 h-3.5 text-rose-500"></i>
+右にスライドで過去の訪問記録 (${spots.length}件)
+</span>
+<span>新しい順 ➔</span>
+</div>
+` : ''}
+
+<!-- 横スライド（スワイプ）コンテナ -->
+<div class="flex overflow-x-auto gap-3 snap-x snap-mandatory pb-2 -mx-1 px-1 no-scrollbar">
+${spots.map((spot, idx) => {
 const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet;
 const isSpecial = spot.genre === 'want' || spot.genre === 'today' || spot.genre === 'other';
 const stars = isSpecial ? genreInfo.label : (RATING_LABELS[spot.rating] || '★'.repeat(spot.rating));
+const visitNum = spots.length - idx; // 過去からの回数
+const isLatest = idx === 0;
 
-const content = `
-<div class="space-y-3">
+return `
+<div class="min-w-full snap-center bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col justify-between space-y-3">
+<div class="space-y-2.5">
+<!-- カード上部バッジ＆日付 -->
+<div class="flex items-center justify-between gap-2">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm" style="background-color:${genreInfo.color}">
+${genreInfo.label}
+</span>
+<span class="text-[11px] bg-white text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full font-bold shadow-xs">
+${isLatest && spots.length > 1 ? '最新の訪問' : `${visitNum}回目の訪問`}
+</span>
+${spot.author ? `<span class="text-[11px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full font-bold">by ${spot.author}</span>` : ''}
+</div>
+<div class="text-right shrink-0">
+<div class="text-[11px] font-bold text-slate-600">${spot.date || '日付未設定'}</div>
+<div class="text-amber-500 font-bold text-xs mt-0.5">${stars}</div>
+</div>
+</div>
+
+<!-- 写真 -->
 ${spot.photo ? `
-<div class="rounded-xl overflow-hidden shadow-sm bg-slate-50 -mx-2 -mt-2 mb-3 flex items-center justify-center p-1 border border-slate-100">
-<img src="${spot.photo}" class="max-w-full max-h-72 object-contain rounded-lg">
+<div class="rounded-xl overflow-hidden shadow-sm bg-white border border-slate-200/60 flex items-center justify-center p-1">
+<img src="${spot.photo}" class="max-w-full max-h-64 object-contain rounded-lg">
 </div>
 ` : ''}
 
-<div class="flex items-start justify-between gap-2 pr-8">
-<div>
-<div class="flex items-center gap-1.5 mb-1">
-<span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white" style="background-color:${genreInfo.color}">
-${genreInfo.label}
-</span>
-${spot.author ? `<span class="text-[11px] bg-rose-50 text-rose-600 border border-rose-100 px-2 py-0.5 rounded-full font-bold">by ${spot.author}</span>` : ''}
-</div>
-<h2 class="text-lg font-bold text-slate-800 leading-snug">${spot.name}</h2>
-<p class="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-<i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-500"></i> ${spot.pref}
-</p>
-</div>
-<div class="text-right shrink-0">
-<div class="text-amber-500 font-bold text-xs">${stars}</div>
-<div class="text-[10px] text-slate-400 mt-0.5">${spot.date || '日付未設定'}</div>
-</div>
-</div>
-
+<!-- コメント -->
 ${spot.comment ? `
-<div class="bg-amber-50/60 p-3 rounded-xl border border-amber-100 text-xs text-slate-700 whitespace-pre-line leading-relaxed">
+<div class="bg-white p-3 rounded-xl border border-slate-200/70 text-xs text-slate-700 whitespace-pre-line leading-relaxed shadow-2xs">
 ${spot.comment}
 </div>
 ` : ''}
+</div>
 
-<div id="deleteConfirmBox" class="hidden bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs space-y-2">
+<!-- 操作ボタン -->
+<div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
+<div class="flex gap-2">
+<button onclick="window.editSpot('${spot.id}')" class="text-indigo-500 hover:text-indigo-700 font-medium flex items-center gap-1 py-1 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition">
+<i data-lucide="edit-3" class="w-3.5 h-3.5"></i> この回を編集
+</button>
+<button onclick="showDeleteConfirm('${spot.id}')" class="text-rose-500 hover:text-rose-700 font-medium flex items-center gap-1 py-1 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 transition">
+<i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 削除
+</button>
+</div>
+<span class="text-[10px] text-slate-400 font-medium">${idx + 1} / ${spots.length}</span>
+</div>
+
+<!-- 削除確認ボックス（カード個別） -->
+<div id="deleteConfirmBox_${spot.id}" class="hidden bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs space-y-2">
 <p class="font-bold text-rose-700 flex items-center gap-1">
-<i data-lucide="alert-triangle" class="w-4 h-4"></i> 本当にこのスポットを削除しますか？
+<i data-lucide="alert-triangle" class="w-4 h-4"></i> この訪問記録を削除しますか？
 </p>
 <div class="flex gap-2 justify-end">
-<button onclick="cancelDeleteUI()" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 font-medium">キャンセル</button>
-<button onclick="executeDeleteSpot('${spot.id}')" class="px-3 py-1.5 bg-rose-600 text-white font-bold rounded-lg shadow-sm hover:bg-rose-700">消去する</button>
+<button onclick="hideDeleteConfirm('${spot.id}')" class="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-slate-600 font-medium text-[11px]">キャンセル</button>
+<button onclick="executeDeleteSpot('${spot.id}')" class="px-2.5 py-1 bg-rose-600 text-white font-bold rounded-lg shadow-sm hover:bg-rose-700 text-[11px]">消去する</button>
 </div>
+</div>
+</div>
+`;
+}).join('')}
 </div>
 
-<div id="detailActionBox" class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-<div class="flex gap-1.5">
-<button onclick="window.editSpot('${spot.id}')" class="text-indigo-500 hover:text-indigo-700 font-medium flex items-center gap-1 p-1">
-<i data-lucide="edit-3" class="w-4 h-4"></i> 編集
-</button>
-<button onclick="showDeleteUI()" class="text-rose-500 hover:text-rose-700 font-medium flex items-center gap-1 p-1">
-<i data-lucide="trash-2" class="w-4 h-4"></i> 削除
-</button>
-</div>
-<button onclick="closeDetailModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-1.5 rounded-lg font-medium transition">
+<div class="pt-1 text-right">
+<button onclick="closeDetailModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-1.5 rounded-lg font-medium transition text-xs">
 閉じる
 </button>
 </div>
 </div>
 `;
 
-document.getElementById('detailContent').innerHTML = content;
+document.getElementById('detailContent').innerHTML = html;
 document.getElementById('detailModal').classList.remove('hidden');
 lucide.createIcons();
 }
 
-function showDeleteUI() {
-document.getElementById('deleteConfirmBox').classList.remove('hidden');
-document.getElementById('detailActionBox').classList.add('hidden');
-}
+window.showDeleteConfirm = function(id) {
+const box = document.getElementById(`deleteConfirmBox_${id}`);
+if (box) box.classList.remove('hidden');
+};
 
-function cancelDeleteUI() {
-document.getElementById('deleteConfirmBox').classList.add('hidden');
-document.getElementById('detailActionBox').classList.remove('hidden');
-}
+window.hideDeleteConfirm = function(id) {
+const box = document.getElementById(`deleteConfirmBox_${id}`);
+if (box) box.classList.add('hidden');
+};
 
 function executeDeleteSpot(id) {
 window.spots = (window.spots || []).filter(s => s.id !== id);
