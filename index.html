@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -48,6 +49,54 @@ position: relative;
 .custom-pin:hover {
 transform: scale(1.25);
 }
+
+/* ★ 「今日の俺」専用の目立つ波紋パルスアニメーション */
+.today-pin-wrapper {
+position: relative;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+.today-pulse-ring {
+position: absolute;
+width: 100%;
+height: 100%;
+border-radius: 50%;
+background-color: rgba(16, 185, 129, 0.65);
+animation: today-pulse 2s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
+pointer-events: none;
+z-index: -1;
+}
+.today-pulse-ring-2 {
+position: absolute;
+width: 100%;
+height: 100%;
+border-radius: 50%;
+background-color: rgba(52, 211, 153, 0.5);
+animation: today-pulse 2s infinite 0.75s cubic-bezier(0.2, 0.8, 0.2, 1);
+pointer-events: none;
+z-index: -1;
+}
+@keyframes today-pulse {
+0% {
+transform: scale(0.9);
+opacity: 0.9;
+}
+70% {
+transform: scale(2.4);
+opacity: 0;
+}
+100% {
+transform: scale(2.6);
+opacity: 0;
+}
+}
+.today-pin {
+box-shadow: 0 0 12px rgba(16, 185, 129, 0.7), 0 3px 6px rgba(0, 0, 0, 0.3) !important;
+border: 2px solid #ffffff !important;
+background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
 .pin-badge {
 position: absolute;
 top: -5px;
@@ -190,7 +239,7 @@ scrollbar-width: none;
 <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>行きたい！
 </button>
 <button onclick="filterGenre('today')" class="genre-btn px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-medium transition flex items-center gap-1">
-<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>今日の俺
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>今日の俺
 </button>
 <button onclick="filterGenre('other')" class="genre-btn px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium transition flex items-center gap-1">
 <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>その他
@@ -304,13 +353,12 @@ scrollbar-width: none;
 <option value="sightseeing">遊び (青)</option>
 <option value="souvenir">フォト (黄)</option>
 <option value="want">行きたい！ (灰)</option>
-<option value="today">今日の俺 (緑)</option>
+<option value="today">今日の俺 (緑・目立つ)</option>
 <option value="other">その他 (紫)</option>
 </select>
 </div>
 </div>
 
-<!-- ★ 満足度ラベルの変更 -->
 <div class="grid grid-cols-2 gap-3">
 <div>
 <label class="block text-xs font-bold text-slate-600 mb-1">満足度 (★1〜5)</label>
@@ -382,7 +430,7 @@ toast.classList.add('opacity-0', 'pointer-events-none');
 }
 </script>
 
-<!-- ★★★ データ同期スクリプト ★★★ -->
+<!-- ★★★ データ同期＆「今日の俺」自動消去スクリプト ★★★ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -403,8 +451,33 @@ const app = initializeApp(myFirebaseConfig);
 const db = getFirestore(app);
 const spotsCollection = collection(db, 'spots');
 
+window.cleanupExpiredTodaySpots = function(spotList) {
+const now = new Date();
+const validSpots = [];
+
+spotList.forEach(spot => {
+if (spot.genre === 'today') {
+if (spot.date) {
+const parts = spot.date.split('-').map(Number);
+if (parts.length === 3) {
+const expireDate = new Date(parts[0], parts[1] - 1, parts[2] + 2, 0, 0, 0, 0);
+if (now >= expireDate) {
+deleteDoc(doc(spotsCollection, spot.id)).catch(e => console.error("Auto delete error:", e));
+return;
+}
+}
+}
+}
+validSpots.push(spot);
+});
+
+return validSpots;
+};
+
 onSnapshot(spotsCollection, (snapshot) => {
-const cloudSpots = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+let cloudSpots = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+cloudSpots = window.cleanupExpiredTodaySpots(cloudSpots);
+
 const cloudIds = new Set(cloudSpots.map(s => s.id));
 
 window.spots.forEach(localSpot => {
@@ -417,7 +490,8 @@ const spotMap = new Map();
 window.spots.forEach(s => spotMap.set(s.id, s));
 cloudSpots.forEach(s => spotMap.set(s.id, s));
 
-window.spots = Array.from(spotMap.values());
+let merged = Array.from(spotMap.values());
+window.spots = window.cleanupExpiredTodaySpots(merged);
 window.saveLocalStorageSpots();
 
 if (typeof window.renderMarkers === 'function') window.renderMarkers();
@@ -752,7 +826,6 @@ searchMarker = null;
 }
 }
 
-// ★ Googleマップ風の柔軟な検索（登録済みスポット＋広範囲Web検索）
 async function searchLocation() {
 const queryRaw = document.getElementById('searchInput').value.trim();
 const resultsDiv = document.getElementById('searchResults');
@@ -768,7 +841,6 @@ const queryLower = queryRaw.toLowerCase();
 const resultsList = [];
 const seenKeys = new Set();
 
-// 1. 登録済みスポットから部分一致するものを最優先抽出
 (window.spots || []).forEach(spot => {
 const nameLower = (spot.name || '').toLowerCase();
 const prefLower = (spot.pref || '').toLowerCase();
@@ -791,9 +863,7 @@ spotId: spot.id
 }
 });
 
-// 2. OpenStreetMap Nominatim で広範囲・曖昧検索
 try {
-// クエリの揺らぎ（スペース区切りやカタカナ/漢字）に対応
 const queriesToTry = [queryRaw];
 if (queryRaw.includes(' ')) {
 queriesToTry.push(queryRaw.replace(/\s+/g, ''));
@@ -897,6 +967,7 @@ resultsDiv.appendChild(div);
 lucide.createIcons();
 }
 
+// ★ ピンの描画（「今日の俺」を目立たせる特別仕様）
 window.renderMarkers = function() {
 if (!map) return;
 markers.forEach(m => map.removeLayer(m));
@@ -922,17 +993,37 @@ spotsAtLoc.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
 const primarySpot = spotsAtLoc[0];
 const genreInfo = GENRE_CONFIG[primarySpot.genre] || GENRE_CONFIG.gourmet;
-const isSpecial = primarySpot.genre === 'want' || primarySpot.genre === 'today' || primarySpot.genre === 'other';
-const pinSize = isSpecial ? 20 : 24;
-const iconSize = isSpecial ? 11 : 13;
-const anchorSize = isSpecial ? 10 : 12;
+const isToday = primarySpot.genre === 'today';
+const isSpecial = primarySpot.genre === 'want' || primarySpot.genre === 'other';
+
+// ★「今日の俺」は32px（通常24px、行きたい20px）
+const pinSize = isToday ? 32 : (isSpecial ? 20 : 24);
+const iconSize = isToday ? 16 : (isSpecial ? 11 : 13);
+const anchorSize = Math.round(pinSize / 2);
 
 const countBadge = spotsAtLoc.length > 1 ? `<div class="pin-badge">${spotsAtLoc.length}</div>` : '';
 
-const iconHtml = `<div class="custom-pin" style="background-color: ${genreInfo.color}; width: ${pinSize}px; height: ${pinSize}px;">
+let iconHtml = '';
+if (isToday) {
+// 「今日の俺」専用：波紋パルスエフェクト付きアイコン
+iconHtml = `
+<div class="today-pin-wrapper" style="width:${pinSize}px; height:${pinSize}px;">
+<div class="today-pulse-ring"></div>
+<div class="today-pulse-ring-2"></div>
+<div class="custom-pin today-pin" style="width:${pinSize}px; height:${pinSize}px;">
 <i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>
 ${countBadge}
-</div>`;
+</div>
+</div>
+`;
+} else {
+iconHtml = `
+<div class="custom-pin" style="background-color: ${genreInfo.color}; width: ${pinSize}px; height: ${pinSize}px;">
+<i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>
+${countBadge}
+</div>
+`;
+}
 
 const customIcon = L.divIcon({
 html: iconHtml,
@@ -941,7 +1032,13 @@ iconSize: [pinSize, pinSize],
 iconAnchor: [anchorSize, anchorSize]
 });
 
-const marker = L.marker([primarySpot.lat, primarySpot.lng], { icon: customIcon }).addTo(map);
+// ★「今日の俺」は最前面（zIndexOffset: 1000）に表示
+const markerOptions = {
+icon: customIcon,
+zIndexOffset: isToday ? 1000 : 0
+};
+
+const marker = L.marker([primarySpot.lat, primarySpot.lng], markerOptions).addTo(map);
 marker.on('click', (e) => {
 L.DomEvent.stopPropagation(e);
 if (spotsAtLoc.length === 1) {
@@ -1378,7 +1475,6 @@ if (!spot) return;
 
 const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet;
 const isSpecial = spot.genre === 'want' || spot.genre === 'today' || spot.genre === 'other';
-// ★ 殿堂・大満足などの星評価テキストを表示
 const stars = isSpecial ? genreInfo.label : (RATING_LABELS[spot.rating] || '★'.repeat(spot.rating));
 
 const content = `
