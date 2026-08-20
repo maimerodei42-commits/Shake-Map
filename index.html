@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -282,8 +281,8 @@ scrollbar-width: none;
 <span id="mapHintText">2本指で回転・タップでピン追加</span>
 </div>
 
-<!-- 地図操作ボタン（URLバーに被らないよう高さを引き上げ：bottom-20） -->
-<div class="absolute bottom-20 right-3 flex flex-col gap-2.5 z-[1000]">
+<!-- ★ 地図操作ボタン（URLバー対策で bottom-32 と大幅に上に配置） -->
+<div class="absolute bottom-32 right-3 flex flex-col gap-2.5 z-[1000]">
 <!-- コンパス / 北向きリセットボタン (回転時のみ表示) -->
 <button id="compassBtn" onclick="resetMapBearing()" class="hidden bg-white/95 backdrop-blur-md p-3 rounded-full shadow-xl border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center text-rose-500" title="北を上にする">
 <i data-lucide="compass" id="compassIcon" class="w-5 h-5 transition-transform duration-200"></i>
@@ -719,7 +718,7 @@ spotPrefSelect.appendChild(opt2);
 });
 }
 
-// 地図の初期化（回転の感度調整・閾値設定）
+// ★ 地図の初期化（回転の感度調整・閾値設定）
 function initMap() {
 map = L.map('map', {
 zoomControl: false,
@@ -731,8 +730,8 @@ rotate: true,
 touchRotate: true,
 rotateControl: false,
 bearing: 0,
-rotateThreshold: 15, // 回転開始に必要なひねり角度を広げて誤回転を防止
-rotateSensitivity: 0.7, // 回転の追従感度を抑えめにして操作しやすく調整
+rotateThreshold: 30, // ★ 回転開始に必要なひねり角度をさらに広げて誤回転を防止（15→30）
+rotateSensitivity: 0.3, // ★ 回転の追従感度を抑えめにして操作しやすく調整（0.7→0.3）
 zoomAnimation: true,
 fadeAnimation: true,
 markerZoomAnimation: true,
@@ -806,14 +805,14 @@ showToast("地図を北向きに戻しました");
 }
 };
 
-// 現在地取得・ピン留め機能（二段階フォールバックで確実に取得）
+// ★ 現在地取得・ピン留め機能（超高速フォールバック取得）
 window.locateUser = function() {
 if (!navigator.geolocation) {
 showToast("ブラウザが位置情報に対応していません");
 return;
 }
 
-showToast("現在地を取得中...（最大15秒）");
+showToast("現在地を高速取得中...");
 
 const handleSuccess = (position) => {
 const lat = position.coords.latitude;
@@ -858,37 +857,21 @@ map.flyTo([lat, lng], 17, { duration: 1.5, easeLinearity: 0.25 });
 showToast("現在地を取得しました！");
 };
 
-const handleError = (error) => {
-let errorMsg = "位置情報エラー";
-if (error.code === 1) {
-errorMsg = "許可が拒否されました。端末の設定を確認してください。";
-} else if (error.code === 2) {
-errorMsg = "電波が届かないため位置を特定できません。";
-} else if (error.code === 3) {
-errorMsg = "取得に時間がかかりすぎました。再試行します...";
-}
-
-showToast(errorMsg);
-
-// タイムアウトや取得不能時は、低精度モードで1回だけ最終リトライ
-if (error.code !== 1) {
-setTimeout(() => {
+// ★ 超・妥協モード（とにかく早く、大まかな位置でも良いから取得する）
 navigator.geolocation.getCurrentPosition(
 handleSuccess,
-(fallbackErr) => {
-showToast("再試行も失敗しました。少し移動してお試しください。");
+(err) => {
+// もし失敗したら、さらに条件を緩めて最終トライ（過去のキャッシュを無限に許容）
+navigator.geolocation.getCurrentPosition(
+handleSuccess,
+(err2) => {
+showToast("取得失敗：一度ブラウザのタブを閉じて開き直すか、少し移動してください。");
 },
-{ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+{ enableHighAccuracy: false, timeout: 15000, maximumAge: Infinity }
 );
-}, 1500);
-}
-};
-
-// Safari向けにタイムアウトを大幅延長（15秒）
-navigator.geolocation.getCurrentPosition(
-handleSuccess,
-handleError,
-{ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+},
+// 最初から「高精度GPS」を諦め、Wi-Fiや携帯基地局ベースの高速測位を優先する
+{ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
 );
 };
 
