@@ -3,20 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- 検索エンジンに登録させないための魔法の1行 -->
 <meta name="robots" content="noindex, nofollow">
 <title>しゃけmap - 全国制覇旅マップ</title>
 
+<!-- iPhone / iOS Web App Meta Tags -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="しゃけmap">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍣</text></svg>">
 
+<!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- Leaflet CSS & JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet Rotate (地図回転プラグイン) -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.css" />
 <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+<!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
+<!-- Chart.js for Analytics -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -802,13 +809,12 @@ showToast("地図を北向きに戻しました");
 // 現在地取得・ピン留め機能（二段階フォールバックで確実に取得）
 window.locateUser = function() {
 if (!navigator.geolocation) {
-showToast("端末が位置情報に対応していません");
+showToast("ブラウザが位置情報に対応していません");
 return;
 }
 
-showToast("現在地を取得中...");
+showToast("現在地を取得中...（最大15秒）");
 
-// 成功時のマーカー描画共通処理
 const handleSuccess = (position) => {
 const lat = position.coords.latitude;
 const lng = position.coords.longitude;
@@ -840,8 +846,8 @@ const popupContent = `
 <div class="font-bold text-xs text-blue-600 mb-0.5 flex items-center justify-center gap-1">
 <span>📍 現在地</span>
 </div>
-<div class="text-[11px] text-slate-500 mb-2">${prefName}</div>
-<button onclick="openAddModal(${lat}, ${lng}, '${prefName}', '現在地のスポット')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm transition whitespace-nowrap">
+<div class="text-[11px] text-slate-500 mb-2">${prefName}周辺</div>
+<button onclick="openAddModal(${lat}, ${lng}, '${prefName}', '')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm transition whitespace-nowrap">
 ここに思い出を追加
 </button>
 </div>
@@ -849,24 +855,40 @@ const popupContent = `
 
 currentLocationMarker.bindPopup(popupContent, { closeButton: false }).openPopup();
 map.flyTo([lat, lng], 17, { duration: 1.5, easeLinearity: 0.25 });
-showToast("現在地を表示しました！");
+showToast("現在地を取得しました！");
 };
 
-// まず高精度GPSで試行し、失敗した場合は標準測位（Wi-Fi/基地局）で即時取得
-navigator.geolocation.getCurrentPosition(
-handleSuccess,
-(err) => {
-console.warn("High accuracy failed, retrying with low accuracy:", err);
+const handleError = (error) => {
+let errorMsg = "位置情報エラー";
+if (error.code === 1) {
+errorMsg = "許可が拒否されました。端末の設定を確認してください。";
+} else if (error.code === 2) {
+errorMsg = "電波が届かないため位置を特定できません。";
+} else if (error.code === 3) {
+errorMsg = "取得に時間がかかりすぎました。再試行します...";
+}
+
+showToast(errorMsg);
+
+// タイムアウトや取得不能時は、低精度モードで1回だけ最終リトライ
+if (error.code !== 1) {
+setTimeout(() => {
 navigator.geolocation.getCurrentPosition(
 handleSuccess,
 (fallbackErr) => {
-console.error("All location attempts failed:", fallbackErr);
-showToast("位置情報が取得できませんでした。ブラウザまたは端末の設定で位置情報アクセスを許可してください。");
+showToast("再試行も失敗しました。少し移動してお試しください。");
 },
 { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
 );
-},
-{ enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+}, 1500);
+}
+};
+
+// Safari向けにタイムアウトを大幅延長（15秒）
+navigator.geolocation.getCurrentPosition(
+handleSuccess,
+handleError,
+{ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
 );
 };
 
