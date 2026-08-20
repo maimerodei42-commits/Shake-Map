@@ -3,27 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<!-- 検索エンジンに登録させないための魔法の1行 -->
 <meta name="robots" content="noindex, nofollow">
 <title>しゃけmap - 全国制覇旅マップ</title>
 
-<!-- iPhone / iOS Web App Meta Tags -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="しゃけmap">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍣</text></svg>">
 
-<!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- Leaflet CSS & JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Leaflet Rotate (地図回転プラグイン) -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.css" />
 <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
-<!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
-<!-- Chart.js for Analytics -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -282,15 +275,15 @@ scrollbar-width: none;
 <span id="mapHintText">2本指で回転・タップでピン追加</span>
 </div>
 
-<!-- 地図操作ボタン（右下: 現在地ボタン＆北向きリセットコンパス） -->
-<div class="absolute bottom-3 right-3 flex flex-col gap-2 z-[1000]">
+<!-- 地図操作ボタン（URLバーに被らないよう高さを引き上げ：bottom-20） -->
+<div class="absolute bottom-20 right-3 flex flex-col gap-2.5 z-[1000]">
 <!-- コンパス / 北向きリセットボタン (回転時のみ表示) -->
-<button id="compassBtn" onclick="resetMapBearing()" class="hidden bg-white/95 backdrop-blur-md p-2.5 rounded-full shadow-lg border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center text-rose-500" title="北を上にする">
+<button id="compassBtn" onclick="resetMapBearing()" class="hidden bg-white/95 backdrop-blur-md p-3 rounded-full shadow-xl border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center text-rose-500" title="北を上にする">
 <i data-lucide="compass" id="compassIcon" class="w-5 h-5 transition-transform duration-200"></i>
 </button>
 
-<!-- 現在地取得ボタン（タップした時のみ現在地を表示・相手には送信されません） -->
-<button onclick="locateUser()" class="bg-white/95 backdrop-blur-md p-2.5 rounded-full shadow-lg border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center text-blue-600" title="現在地を表示してピンを刺す">
+<!-- 現在地取得ボタン（タップ時のみ一時表示・共有はされません） -->
+<button onclick="locateUser()" class="bg-white/95 backdrop-blur-md p-3 rounded-full shadow-xl border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center text-blue-600" title="現在地を表示してピンを刺す">
 <i data-lucide="locate-fixed" class="w-5 h-5"></i>
 </button>
 </div>
@@ -452,6 +445,20 @@ scrollbar-width: none;
 <div id="detailContent"></div>
 </div>
 </div>
+
+<!-- Leaflet JS -->
+<script>
+function showToast(msg) {
+const toast = document.getElementById('toast');
+document.getElementById('toastMsg').textContent = msg;
+toast.classList.remove('opacity-0', 'pointer-events-none');
+toast.classList.add('opacity-100');
+setTimeout(() => {
+toast.classList.remove('opacity-100');
+toast.classList.add('opacity-0', 'pointer-events-none');
+}, 4000);
+}
+</script>
 
 <!-- ★★★ データ同期＆「今日の俺」自動消去スクリプト ★★★ -->
 <script type="module">
@@ -705,6 +712,7 @@ spotPrefSelect.appendChild(opt2);
 });
 }
 
+// 地図の初期化（回転の感度調整・閾値設定）
 function initMap() {
 map = L.map('map', {
 zoomControl: false,
@@ -716,6 +724,8 @@ rotate: true,
 touchRotate: true,
 rotateControl: false,
 bearing: 0,
+rotateThreshold: 15, // 回転開始に必要なひねり角度を広げて誤回転を防止
+rotateSensitivity: 0.7, // 回転の追従感度を抑えめにして操作しやすく調整
 zoomAnimation: true,
 fadeAnimation: true,
 markerZoomAnimation: true,
@@ -789,17 +799,17 @@ showToast("地図を北向きに戻しました");
 }
 };
 
-// 現在地取得・ピン留め機能（端末ローカルのみ）
+// 現在地取得・ピン留め機能（二段階フォールバックで確実に取得）
 window.locateUser = function() {
 if (!navigator.geolocation) {
-showToast("お使いの端末が位置情報に対応していません");
+showToast("端末が位置情報に対応していません");
 return;
 }
 
 showToast("現在地を取得中...");
 
-navigator.geolocation.getCurrentPosition(
-(position) => {
+// 成功時のマーカー描画共通処理
+const handleSuccess = (position) => {
 const lat = position.coords.latitude;
 const lng = position.coords.longitude;
 const prefName = findNearestPrefecture(lat, lng);
@@ -840,16 +850,23 @@ const popupContent = `
 currentLocationMarker.bindPopup(popupContent, { closeButton: false }).openPopup();
 map.flyTo([lat, lng], 17, { duration: 1.5, easeLinearity: 0.25 });
 showToast("現在地を表示しました！");
+};
+
+// まず高精度GPSで試行し、失敗した場合は標準測位（Wi-Fi/基地局）で即時取得
+navigator.geolocation.getCurrentPosition(
+handleSuccess,
+(err) => {
+console.warn("High accuracy failed, retrying with low accuracy:", err);
+navigator.geolocation.getCurrentPosition(
+handleSuccess,
+(fallbackErr) => {
+console.error("All location attempts failed:", fallbackErr);
+showToast("位置情報が取得できませんでした。ブラウザまたは端末の設定で位置情報アクセスを許可してください。");
 },
-(error) => {
-console.error("Geolocation error:", error);
-showToast("位置情報が取得できませんでした。位置情報の利用を許可してください。");
+{ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+);
 },
-{
-enableHighAccuracy: true,
-timeout: 10000,
-maximumAge: 0
-}
+{ enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
 );
 };
 
