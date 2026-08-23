@@ -25,6 +25,11 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <style>
+:root {
+/* ★ ズームに合わせてJSから動的に書き換わるスケール変数 */
+--pin-scale: 1;
+}
+
 #map {
 height: calc(100vh - 200px);
 min-height: 420px;
@@ -36,6 +41,16 @@ touch-action: pan-x pan-y pinch-zoom;
 .leaflet-tile {
 transition: opacity 0.15s ease-in-out;
 }
+
+/* ★ なめらかにサイズが変わるピンのコンテナ */
+.scaled-pin-container {
+transform: scale(var(--pin-scale));
+transform-origin: center center;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
 .custom-pin {
 display: flex;
 align-items: center;
@@ -45,14 +60,10 @@ color: white;
 font-weight: bold;
 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 border: 1.5px solid white;
-transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 position: relative;
 }
-.custom-pin:hover {
-transform: scale(1.25) !important;
-}
 
-/* 検索専用ピン（記録ピンとは完全に異なるデザイン） */
+/* 検索専用ピン */
 .search-pin-container {
 display: flex;
 align-items: center;
@@ -61,16 +72,17 @@ background-color: #0f172a;
 color: #38bdf8;
 border: 2px solid #38bdf8;
 border-radius: 8px;
-font-size: 12px;
+font-size: 11px;
 font-weight: 800;
 box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
 animation: searchBounce 0.6s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
 }
 @keyframes searchBounce {
 0% { transform: translateY(0); }
-100% { transform: translateY(-5px); }
+100% { transform: translateY(-4px); }
 }
 
+/* 現在地アイコン */
 .current-loc-marker {
 position: relative;
 display: flex;
@@ -78,18 +90,18 @@ align-items: center;
 justify-content: center;
 }
 .current-loc-dot {
-width: 18px;
-height: 18px;
+width: 14px;
+height: 14px;
 background-color: #2563eb;
-border: 3px solid #ffffff;
+border: 2px solid #ffffff;
 border-radius: 50%;
 box-shadow: 0 2px 8px rgba(0,0,0,0.35);
 z-index: 2;
 }
 .current-loc-wave {
 position: absolute;
-width: 38px;
-height: 38px;
+width: 30px;
+height: 30px;
 border-radius: 50%;
 background-color: rgba(37, 99, 235, 0.4);
 animation: locWave 2s infinite ease-out;
@@ -100,6 +112,7 @@ z-index: 1;
 100% { transform: scale(2.2); opacity: 0; }
 }
 
+/* 「今日の俺」専用の波紋パルスエフェクト */
 .today-pin-wrapper {
 position: relative;
 display: flex;
@@ -137,16 +150,17 @@ border: 2px solid #ffffff !important;
 background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
 }
 
+/* バッジのサイズもピンに合わせて少し小型化 */
 .pin-badge {
 position: absolute;
-top: -5px;
-right: -5px;
+top: -4px;
+right: -4px;
 background-color: #f43f5e;
 color: white;
-font-size: 10px;
+font-size: 9px;
 font-weight: bold;
-width: 18px;
-height: 18px;
+width: 14px;
+height: 14px;
 border-radius: 50%;
 display: flex;
 align-items: center;
@@ -154,13 +168,9 @@ justify-content: center;
 border: 1.5px solid white;
 box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
-.no-scrollbar::-webkit-scrollbar {
-display: none;
-}
-.no-scrollbar {
--ms-overflow-style: none;
-scrollbar-width: none;
-}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 </head>
 <body class="bg-amber-50/50 text-slate-800 font-sans min-h-screen flex flex-col select-none">
@@ -200,7 +210,6 @@ scrollbar-width: none;
 </div>
 </div>
 
-<!-- Compact Inline Stats Strip -->
 <div class="flex items-center justify-between gap-1 text-[11px] bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-slate-600 overflow-x-auto no-scrollbar whitespace-nowrap">
 <div class="flex items-center gap-1">
 <span id="syncIndicator" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
@@ -218,13 +227,11 @@ scrollbar-width: none;
 </div>
 </div>
 
-<!-- マップ内連動 検索バー -->
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
 <div class="sm:col-span-2 relative">
 <div class="flex items-center gap-1.5 bg-slate-100/90 rounded-lg px-2 py-1 border border-slate-200 focus-within:border-rose-400 focus-within:ring-1 focus-within:ring-rose-200 transition">
 <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400"></i>
 <input type="text" id="searchInput" oninput="handleSearchInputChange()" placeholder="タワー、うどん等、表示中のマップから検索..." onkeydown="if(event.key==='Enter') searchLocation()" class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none">
-<!-- クリアボタン -->
 <button id="clearSearchBtn" onclick="clearSearch()" class="hidden p-1 text-slate-400 hover:text-slate-600 transition bg-slate-200/60 rounded-full">
 <i data-lucide="x" class="w-3 h-3"></i>
 </button>
@@ -297,7 +304,7 @@ scrollbar-width: none;
 </div>
 </main>
 
-<!-- ★ スッキリ化した 統計＆リストモーダル -->
+<!-- 統計＆リストモーダル -->
 <div id="chartModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
 <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 relative my-auto max-h-[90vh] flex flex-col">
 <button onclick="closeChartModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 z-10">
@@ -310,15 +317,12 @@ scrollbar-width: none;
 </h3>
 <p class="text-xs text-slate-500 mb-4">県別のピン数と、都道府県ごとのスポットリスト</p>
 
-<!-- タブ -->
 <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl mb-4 text-xs font-semibold shrink-0">
 <button id="modalTabStats" onclick="switchModalTab('stats')" class="flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition">統計情報</button>
 <button id="modalTabList" onclick="switchModalTab('list')" class="flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition">場所の一覧</button>
 </div>
 
-<!-- コンテンツエリア -->
 <div class="flex-1 overflow-y-auto pr-1">
-<!-- 統計ビュー（グラフ削除・県別と人別に絞る） -->
 <div id="viewStats" class="space-y-6">
 <div>
 <h4 class="font-bold text-slate-700 border-b border-slate-200 pb-1 mb-2">都道府県ごとの制覇数</h4>
@@ -330,7 +334,6 @@ scrollbar-width: none;
 </div>
 </div>
 
-<!-- 一覧ビュー（アコーディオン形式） -->
 <div id="viewList" class="hidden space-y-2 pb-2">
 <div id="spotListContainer"></div>
 </div>
@@ -409,7 +412,6 @@ scrollbar-width: none;
 </div>
 </div>
 
-<!-- 評価＆編集連動の写真スロットエリア -->
 <div class="space-y-2">
 <div class="flex items-center justify-between">
 <label class="block text-xs font-bold text-slate-600">思い出写真</label>
@@ -490,7 +492,7 @@ toast.classList.add('opacity-0', 'pointer-events-none');
 }
 </script>
 
-<!-- ★★★ データ同期スクリプト ★★★ -->
+<!-- ★★★ データ同期＆自動消去スクリプト ★★★ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -534,7 +536,6 @@ return validSpots;
 
 onSnapshot(spotsCollection, (snapshot) => {
 let cloudSpots = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-
 window.spots = window.cleanupExpiredTodaySpots(cloudSpots);
 window.saveLocalStorageSpots();
 
@@ -547,20 +548,12 @@ if (statusEl) {
 statusEl.textContent = "完全同期済";
 statusEl.className = "font-bold text-blue-600";
 }
-const indicatorEl = document.getElementById('syncIndicator');
-if (indicatorEl) {
-indicatorEl.className = "w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse";
-}
 }, (err) => {
 console.error("Cloud sync error:", err);
 const statusEl = document.getElementById('statSyncStatus');
 if (statusEl) {
 statusEl.textContent = "未接続 (ローカル)";
 statusEl.className = "font-bold text-rose-600";
-}
-const indicatorEl = document.getElementById('syncIndicator');
-if (indicatorEl) {
-indicatorEl.className = "w-1.5 h-1.5 rounded-full bg-rose-500";
 }
 });
 
@@ -692,6 +685,17 @@ const opt2 = document.createElement('option'); opt2.value = p.name; opt2.textCon
 });
 }
 
+// ★ CSS変数を利用してズームに合わせてスケールを滑らかに変更する機能
+window.updatePinScale = function() {
+if (!map) return;
+const zoom = map.getZoom();
+// ズーム5の時にスケール0.5、ズーム15の時にスケール1.0になるように計算
+let scale = 0.5 + ((zoom - 5) / 10) * 0.5;
+if (scale > 1) scale = 1;
+if (scale < 0.4) scale = 0.4;
+document.documentElement.style.setProperty('--pin-scale', scale);
+};
+
 function initMap() {
 map = L.map('map', {
 zoomControl: false,
@@ -727,6 +731,11 @@ const outerMaskPolygon = [
 ];
 L.polygon(outerMaskPolygon, { color: 'transparent', fillColor: '#e0f2fe', fillOpacity: 1.0, interactive: false }).addTo(map);
 
+// ★ ズーム中にスケールをリアルタイム更新する（なめらかなサイズ変化）
+map.on('zoom', () => {
+window.updatePinScale();
+});
+
 map.on('rotate', () => {
 const bearing = map.getBearing ? map.getBearing() : 0;
 const compassBtn = document.getElementById('compassBtn');
@@ -749,12 +758,13 @@ openAddModal(e.latlng.lat, e.latlng.lng, nearestPref);
 }
 });
 
-// ★ ズーム時にピンのサイズを再計算して描画
 map.on('zoomend', () => {
+window.updatePinScale();
 updateMapHint();
-window.renderMarkers();
+// ※チラツキ防止のため、ここでは renderMarkers() を呼び出さない
 });
 
+window.updatePinScale(); // 初期表示時のスケール設定
 window.renderMarkers();
 }
 
@@ -769,7 +779,9 @@ const handleSuccess = (position) => {
 const lat = position.coords.latitude; const lng = position.coords.longitude;
 const prefName = findNearestPrefecture(lat, lng);
 if (currentLocationMarker) map.removeLayer(currentLocationMarker);
-const locIcon = L.divIcon({ html: `<div class="current-loc-marker"><div class="current-loc-wave"></div><div class="current-loc-dot"></div></div>`, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
+
+// ★ 現在地ピンもスケール対象にする
+const locIcon = L.divIcon({ html: `<div class="scaled-pin-container current-loc-marker" style="width:20px; height:20px;"><div class="current-loc-wave"></div><div class="current-loc-dot"></div></div>`, className: '', iconSize: [20, 20], iconAnchor: [10, 10] });
 currentLocationMarker = L.marker([lat, lng], { icon: locIcon, zIndexOffset: 2000 }).addTo(map);
 currentLocationMarker.bindPopup(`<div class="p-1 text-center font-sans"><div class="font-bold text-xs text-blue-600 mb-0.5">📍 現在地</div><div class="text-[11px] text-slate-500 mb-2">${prefName}周辺</div><button onclick="openAddModal(${lat}, ${lng}, '${prefName}', '')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm">ここに追加</button></div>`, { closeButton: false }).openPopup();
 map.flyTo([lat, lng], 17, { duration: 1.5 });
@@ -832,7 +844,6 @@ document.getElementById('clearSearchBtn').classList.add('hidden');
 if (window.currentSearchLayerGroup) window.currentSearchLayerGroup.clearLayers();
 }
 
-// ★ 完全版：画面内＆部分一致特化の検索システム
 async function searchLocation() {
 const queryRaw = document.getElementById('searchInput').value.trim();
 const resultsDiv = document.getElementById('searchResults');
@@ -863,7 +874,6 @@ resultsList.push({ isLocal: true, name: spot.name, subText: `【登録済】${sp
 }
 });
 
-// ズームしている時（画面内に絞り込む）だけOverpassを発動
 if (zoom >= 8) {
 const bboxOP = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
 const opQuery = `[out:json][timeout:15];(nwr["name"~"${keyword}",i](${bboxOP}););out center 40;`;
@@ -893,13 +903,12 @@ return;
 
 resultsDiv.innerHTML = '';
 
-// 最大20件表示（検索用の一斉ピン）
-const zoomScale = map.getZoom() < 8 ? 0.5 : 1;
+// ★ 検索ピンもスケール対象クラス(scaled-pin-container)を付与
 resultsList.slice(0, 20).forEach((item, idx) => {
 const listNum = idx + 1;
 
-const iconHtml = `<div class="search-pin-container" style="width: 26px; height: 26px; transform: scale(${zoomScale}); transform-origin: center center;"><span>${listNum}</span></div>`;
-const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [26, 26], iconAnchor: [13, 13] });
+const iconHtml = `<div class="scaled-pin-container search-pin-container" style="width: 20px; height: 20px;"><span>${listNum}</span></div>`;
+const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [20, 20], iconAnchor: [10, 10] });
 const marker = L.marker([item.lat, item.lon], { icon: customIcon, zIndexOffset: 1500 }).addTo(window.currentSearchLayerGroup);
 
 marker.bindPopup(`<div class="p-1 text-center font-sans"><div class="font-bold text-sm text-slate-800 mb-1">${item.name}</div><div class="text-[10px] text-slate-500 mb-2">${item.prefName}</div>${item.isLocal ? `<button onclick="openDetailModal('${item.spotId}')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg">記録を見る</button>` : `<button onclick="openAddModal(${item.lat}, ${item.lon}, '${item.prefName}', '${item.name.replace(/'/g, "\\'")}')" class="bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg">ここに追加</button>`}</div>`, { closeButton: false });
@@ -920,7 +929,7 @@ resultsDiv.appendChild(div);
 showToast(`画面内から ${Math.min(resultsList.length, 20)}件 の候補を見つけました！`);
 }
 
-// ★ ピンの描画（ズームアウト時はサイズを半分にする）
+// ★ ベースのサイズを全体的に小さくし、スケール対応
 window.renderMarkers = function() {
 if (!map) return;
 markers.forEach(m => map.removeLayer(m));
@@ -936,8 +945,6 @@ if (!locationMap.has(key)) locationMap.set(key, []);
 locationMap.get(key).push(spot);
 });
 
-const zoomScale = map.getZoom() < 8 ? 0.5 : 1; // ズーム8未満で半分のサイズ
-
 locationMap.forEach((spotsAtLoc) => {
 spotsAtLoc.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 const primarySpot = spotsAtLoc[0];
@@ -945,8 +952,10 @@ const genreInfo = GENRE_CONFIG[primarySpot.genre] || GENRE_CONFIG.gourmet;
 const isToday = primarySpot.genre === 'today';
 const isSpecial = primarySpot.genre === 'want' || primarySpot.genre === 'other';
 
-const basePinSize = isToday ? 32 : (isSpecial ? 20 : 24);
-const iconSize = isToday ? 16 : (isSpecial ? 11 : 13);
+// サイズのベースを小型化
+const basePinSize = isToday ? 26 : (isSpecial ? 16 : 20);
+const iconSize = isToday ? 14 : (isSpecial ? 9 : 11);
+const anchorSize = Math.round(basePinSize / 2);
 const countBadge = spotsAtLoc.length > 1 ? `<div class="pin-badge">${spotsAtLoc.length}</div>` : '';
 
 let innerHtml = isToday ?
@@ -954,16 +963,10 @@ let innerHtml = isToday ?
 :
 `<div class="custom-pin" style="background-color: ${genreInfo.color}; width: ${basePinSize}px; height: ${basePinSize}px;"><i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>${countBadge}</div>`;
 
-// スケールを適用
-const iconHtml = `<div style="transform: scale(${zoomScale}); transform-origin: center center; width: ${basePinSize}px; height: ${basePinSize}px;">${innerHtml}</div>`;
+// CSS変数で拡大縮小するクラスを付与
+const iconHtml = `<div class="scaled-pin-container" style="width: ${basePinSize}px; height: ${basePinSize}px;">${innerHtml}</div>`;
 
-const customIcon = L.divIcon({
-html: iconHtml,
-className: '',
-iconSize: [basePinSize, basePinSize],
-iconAnchor: [basePinSize / 2, basePinSize / 2]
-});
-
+const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [basePinSize, basePinSize], iconAnchor: [anchorSize, anchorSize] });
 const marker = L.marker([primarySpot.lat, primarySpot.lng], { icon: customIcon, zIndexOffset: isToday ? 1000 : 0 }).addTo(map);
 
 marker.on('click', (e) => {
@@ -985,9 +988,6 @@ document.getElementById('progressBar').style.width = `${((visitedPrefs.size / 47
 window.updateAnalytics = function() {
 const spots = window.spots || [];
 document.getElementById('statTotalPins').textContent = `${spots.length}個`;
-const authors = new Set();
-spots.forEach(s => { if (s.author && s.author.trim() !== "") authors.add(s.author.trim()); });
-document.getElementById('statAuthors').textContent = `${Math.max(authors.size, spots.length > 0 ? 1 : 0)}人`;
 };
 
 function openChartModal() { document.getElementById('chartModal').classList.remove('hidden'); switchModalTab('stats'); }
@@ -1009,7 +1009,6 @@ view.classList.add('hidden');
 });
 }
 
-// ★ 新しい統計画面（県別・人別のみ）
 window.renderStats = function() {
 const prefContainer = document.getElementById('statsPrefList');
 const authorContainer = document.getElementById('statsAuthorList');
@@ -1037,7 +1036,6 @@ authorHtml += `<div class="py-1.5 flex items-center justify-between border-b bor
 authorContainer.innerHTML = authorHtml || '<div class="text-center py-4 text-slate-400 text-xs">データなし</div>';
 }
 
-// ★ 県別アコーディオンリスト
 function renderSpotList() {
 const container = document.getElementById('spotListContainer');
 let spots = (window.spots || []).filter(s => currentFilter === 'all' ? s.genre !== 'other' : s.genre === currentFilter).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
@@ -1101,7 +1099,6 @@ el.classList.add('hidden'); el.classList.remove('flex'); icon.style.transform = 
 }
 }
 
-// ★ 写真スロットの表示制御（評価・新規/編集連動）
 window.updatePhotoSlotVisibility = function() {
 const isEdit = !!document.getElementById('spotId').value;
 const rating = parseInt(document.getElementById('spotRating').value || '5');
@@ -1154,7 +1151,6 @@ closeDetailModal();
 openAddModal(lat, lng, pref, name);
 };
 
-// ★ 編集時のデータ復元（配列対応）
 window.editSpot = function(id) {
 const spot = (window.spots || []).find(s => s.id === id);
 if (!spot) return;
