@@ -282,7 +282,7 @@ scrollbar-width: none;
 <span id="mapHintText">2本指で回転・タップでピン追加</span>
 </div>
 
-<!-- 地図操作ボタン（URLバー対策で bottom-32） -->
+<!-- 地図操作ボタン -->
 <div class="absolute bottom-32 right-3 flex flex-col gap-2.5 z-[1000]">
 <!-- コンパス / 北向きリセットボタン (回転時のみ表示) -->
 <button id="compassBtn" onclick="resetMapBearing()" class="hidden bg-white/95 backdrop-blur-md p-3 rounded-full shadow-xl border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center text-rose-500" title="北を上にする">
@@ -510,13 +510,12 @@ validSpots.push(spot);
 return validSpots;
 };
 
-// ★ ゾンビ化バグの根本原因（ローカルからの不要な強制アップロード）を削除
+// ★ ゾンビ化バグの根本原因（ローカルからの不要な強制アップロード）を完全に削除
 onSnapshot(spotsCollection, (snapshot) => {
 let cloudSpots = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-cloudSpots = window.cleanupExpiredTodaySpots(cloudSpots);
 
-// クラウドのデータを「唯一の絶対的な正解」として扱う
-window.spots = cloudSpots;
+// クラウドのデータを「唯一の絶対的な正解」として扱う（削除したピンが復活しないようにする）
+window.spots = window.cleanupExpiredTodaySpots(cloudSpots);
 window.saveLocalStorageSpots();
 
 if (typeof window.renderMarkers === 'function') window.renderMarkers();
@@ -719,8 +718,8 @@ rotate: true,
 touchRotate: true,
 rotateControl: false,
 bearing: 0,
-rotateThreshold: 45, // ★ 回転開始に必要なひねり角度をさらに大きく（誤作動防止）
-rotateSensitivity: 0.25, // ★ 回転スピードをさらに重く調整
+rotateThreshold: 50, // ★ 回転開始に必要なひねり角度を最大化（誤作動防止）
+rotateSensitivity: 0.15, // ★ 回転スピードをさらに重く調整（微調整可能に）
 zoomAnimation: true,
 fadeAnimation: true,
 markerZoomAnimation: true,
@@ -794,14 +793,14 @@ showToast("地図を北向きに戻しました");
 }
 };
 
-// ★ iPhoneの厳しい制限を突破する現在地取得ロジック（IP取得を廃止）
+// ★ Safari位置情報・完全攻略ロジック（自作タイムアウト＆的確なエラー表示）
 window.locateUser = function() {
 if (!navigator.geolocation) {
 showToast("ブラウザが位置情報に対応していません");
 return;
 }
 
-showToast("現在地を取得中...（最大15秒）");
+showToast("現在地を取得中...（最大10秒）");
 
 const handleSuccess = (position) => {
 const lat = position.coords.latitude;
@@ -846,27 +845,45 @@ map.flyTo([lat, lng], 17, { duration: 1.5, easeLinearity: 0.25 });
 showToast("現在地を取得しました！");
 };
 
-const handleError = (error) => {
-console.warn("High Accuracy Failed:", error);
-showToast("高精度取得に失敗。標準測位で再試行します...");
-
-// 高精度がダメならWi-Fiや携帯基地局による標準測位にフォールバック（iPhoneの純正マップと同じ挙動）
+// 安全に位置情報を取得するためのラッパー関数（Safariのフリーズを回避）
+const getSafely = (options) => {
+return new Promise((resolve, reject) => {
+let isDone = false;
 navigator.geolocation.getCurrentPosition(
-handleSuccess,
-(fallbackErr) => {
-console.error("All location attempts failed:", fallbackErr);
-showToast("位置情報が取得できませんでした。端末設定で許可されているか確認してください。");
-},
-{ enableHighAccuracy: false, timeout: 15000, maximumAge: Infinity }
+(pos) => { if (!isDone) { isDone = true; resolve(pos); } },
+(err) => { if (!isDone) { isDone = true; reject(err); } },
+options
 );
+// 指定時間を過ぎたらプログラム側から強制的にエラーを出す（タイムアウト）
+setTimeout(() => {
+if (!isDone) { isDone = true; reject({ code: 3, message: "Manual Timeout" }); }
+}, options.timeout + 500);
+});
 };
 
-// まず高精度GPSで取得を試みる（最大15秒待機）
-navigator.geolocation.getCurrentPosition(
-handleSuccess,
-handleError,
-{ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-);
+// 実行プロセス（高精度GPS → 失敗したら標準測位）
+(async () => {
+try {
+// 第1段階：高精度のGPS電波を探す（7秒待機）
+const pos = await getSafely({ enableHighAccuracy: true, timeout: 7000, maximumAge: 0 });
+handleSuccess(pos);
+} catch (err1) {
+// もしiPhoneの設定で「拒否」されている場合、明確な直し方を案内する
+if (err1.code === 1) {
+alert("【位置情報の取得がブロックされています】\n\nSafariの位置情報を許可してください。\n\n1. iPhoneの「設定」アプリを開く\n2. 「プライバシーとセキュリティ」を選択\n3. 「位置情報サービス」を選択\n4. 一覧から「SafariのWebサイト」を選び、『このAppの使用中』に変更してください。");
+return;
+}
+
+showToast("GPS電波が弱いため、標準精度で再試行します...");
+try {
+// 第2段階：Wi-Fiや携帯基地局を使った標準測位（7秒待機、過去1分以内のデータも許容）
+const pos2 = await getSafely({ enableHighAccuracy: false, timeout: 7000, maximumAge: 60000 });
+handleSuccess(pos2);
+} catch (err2) {
+alert("位置情報を取得できませんでした。\n地下や屋内などで電波が届いていない可能性があります。");
+}
+}
+})();
 };
 
 function updateMapHint() {
@@ -959,7 +976,6 @@ searchMarker = null;
 }
 }
 
-// ★ マップ連動検索（画面内を優先して検索）
 async function searchLocation() {
 const queryRaw = document.getElementById('searchInput').value.trim();
 const resultsDiv = document.getElementById('searchResults');
@@ -998,7 +1014,7 @@ spotId: spot.id
 }
 });
 
-// 2. OpenStreetMap 検索（画面内を優先）
+// 2. OpenStreetMap 検索
 try {
 const bounds = map.getBounds();
 const viewbox = `${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}`;
@@ -1012,7 +1028,6 @@ queriesToTry.push(queryRaw.replace(/\s+/g, ''));
 for (const q of queriesToTry) {
 let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=jp&limit=15&addressdetails=1&accept-language=ja`;
 
-// ズームインしている時は画面内を優先して検索
 if (zoom >= 12) {
 url += `&viewbox=${viewbox}&bounded=1`;
 } else if (zoom >= 8) {
@@ -1022,7 +1037,6 @@ url += `&viewbox=${viewbox}`;
 let res = await fetch(url);
 let data = await res.json();
 
-// もし画面内で見つからなければ、全国範囲で再検索
 if (data.length === 0 && zoom >= 12) {
 const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=jp&limit=15&addressdetails=1&accept-language=ja`;
 const resFb = await fetch(fallbackUrl);
@@ -1634,8 +1648,11 @@ ${spots.length > 1 ? `
 <div class="flex overflow-x-auto gap-3 snap-x snap-mandatory pb-2 -mx-1 px-1 no-scrollbar">
 ${spots.map((spot, idx) => {
 const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet;
-const isSpecial = spot.genre === 'want' || spot.genre === 'today' || spot.genre === 'other';
-const stars = isSpecial ? genreInfo.label : (RATING_LABELS[spot.rating] || '★'.repeat(spot.rating));
+
+// ★ 星の表示ロジックを修正：「今日の俺」も星評価を表示するように変更
+const isNoStarGenre = spot.genre === 'want' || spot.genre === 'other';
+const stars = isNoStarGenre ? genreInfo.label : (RATING_LABELS[spot.rating] || '★'.repeat(spot.rating));
+
 const visitNum = spots.length - idx;
 const isLatest = idx === 0;
 
@@ -1720,17 +1737,24 @@ const box = document.getElementById(`deleteConfirmBox_${id}`);
 if (box) box.classList.add('hidden');
 };
 
-// ★ 削除ロジック（クラウドから消すだけで、ゾンビ化バグは解消済み）
-window.executeDeleteSpot = function(id) {
+// ★ 完全削除ロジック：ローカルを消し、クラウドからも即座に消去する
+window.executeDeleteSpot = async function(id) {
+// ローカルから即座に消して画面を更新
 window.spots = (window.spots || []).filter(s => s.id !== id);
-window.saveLocalStorageSpots();
-if (window.deleteSpotFromCloud) window.deleteSpotFromCloud(id);
-
 window.renderMarkers();
 window.updateProgress();
 window.updateAnalytics();
 closeDetailModal();
-showToast("スポットを削除しました");
+
+// クラウドから削除を実行（もう復活しない）
+try {
+if (window.deleteSpotFromCloud) {
+await window.deleteSpotFromCloud(id);
+}
+showToast("スポットを完全に削除しました");
+} catch (e) {
+showToast("削除中にエラーが発生しました");
+}
 }
 
 window.closeDetailModal = function() {
