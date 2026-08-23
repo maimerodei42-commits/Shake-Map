@@ -3,21 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- 検索エンジンに登録させないための魔法の1行 -->
 <meta name="robots" content="noindex, nofollow">
 <title>しゃけmap - 全国制覇旅マップ</title>
 
+<!-- iPhone / iOS Web App Meta Tags -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="しゃけmap">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍣</text></svg>">
 
+<!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- Leaflet CSS & JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet Rotate (地図回転プラグイン) -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.css" />
 <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+<!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 #map {
@@ -44,7 +49,7 @@ transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 position: relative;
 }
 .custom-pin:hover {
-transform: scale(1.25);
+transform: scale(1.25) !important;
 }
 
 /* 検索専用ピン（記録ピンとは完全に異なるデザイン） */
@@ -195,15 +200,11 @@ scrollbar-width: none;
 </div>
 </div>
 
+<!-- Compact Inline Stats Strip -->
 <div class="flex items-center justify-between gap-1 text-[11px] bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-slate-600 overflow-x-auto no-scrollbar whitespace-nowrap">
 <div class="flex items-center gap-1">
 <span id="syncIndicator" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
 <span id="statSyncStatus" class="font-bold text-slate-500">接続待機中...</span>
-</div>
-<span class="text-slate-300">|</span>
-<div class="flex items-center gap-1">
-<span class="text-slate-400">記録:</span>
-<span id="statAuthors" class="font-bold text-slate-700">0人</span>
 </div>
 <span class="text-slate-300">|</span>
 <div class="flex items-center gap-1">
@@ -217,7 +218,7 @@ scrollbar-width: none;
 </div>
 </div>
 
-<!-- ★ マップ内連動 検索バー -->
+<!-- マップ内連動 検索バー -->
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
 <div class="sm:col-span-2 relative">
 <div class="flex items-center gap-1.5 bg-slate-100/90 rounded-lg px-2 py-1 border border-slate-200 focus-within:border-rose-400 focus-within:ring-1 focus-within:ring-rose-200 transition">
@@ -267,7 +268,6 @@ scrollbar-width: none;
 <button onclick="filterGenre('want')" class="genre-btn px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium transition flex items-center gap-1">
 <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>行きたい！
 </button>
-<!-- ★ 今日の俺 から「目立つ」の文字を削除 -->
 <button onclick="filterGenre('today')" class="genre-btn px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-medium transition flex items-center gap-1">
 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>今日の俺
 </button>
@@ -297,50 +297,54 @@ scrollbar-width: none;
 </div>
 </main>
 
-<!-- Chart Analytics Modal -->
+<!-- ★ スッキリ化した 統計＆リストモーダル -->
 <div id="chartModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
 <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 relative my-auto max-h-[90vh] flex flex-col">
 <button onclick="closeChartModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 z-10">
 <i data-lucide="x" class="w-5 h-5"></i>
 </button>
+
 <h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
 <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-500"></i>
-<span>統計・登録スポット一覧</span>
+<span>統計・思い出一覧</span>
 </h3>
-<p class="text-xs text-slate-500 mb-4">思い出の増加推移と登録場所リスト</p>
+<p class="text-xs text-slate-500 mb-4">県別のピン数と、都道府県ごとのスポットリスト</p>
 
+<!-- タブ -->
 <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl mb-4 text-xs font-semibold shrink-0">
-<button id="modalTabChart" onclick="switchModalTab('chart')" class="flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition">グラフ推移</button>
-<button id="modalTabPref" onclick="switchModalTab('pref')" class="flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition">県別ピン数</button>
+<button id="modalTabStats" onclick="switchModalTab('stats')" class="flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition">統計情報</button>
 <button id="modalTabList" onclick="switchModalTab('list')" class="flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition">場所の一覧</button>
 </div>
 
+<!-- コンテンツエリア -->
 <div class="flex-1 overflow-y-auto pr-1">
-<div id="viewChart" class="space-y-3">
-<div class="flex items-center gap-1 bg-slate-50 p-1 rounded-lg text-xs font-semibold border border-slate-100">
-<button id="chartTabMonthly" onclick="switchChartMode('monthly')" class="flex-1 py-1 rounded bg-white shadow-sm text-slate-800 transition">月別</button>
-<button id="chartTabWeekly" onclick="switchChartMode('weekly')" class="flex-1 py-1 rounded text-slate-500 hover:text-slate-800 transition">週別</button>
-<button id="chartTabDaily" onclick="switchChartMode('daily')" class="flex-1 py-1 rounded text-slate-500 hover:text-slate-800 transition">日別</button>
+<!-- 統計ビュー（グラフ削除・県別と人別に絞る） -->
+<div id="viewStats" class="space-y-6">
+<div>
+<h4 class="font-bold text-slate-700 border-b border-slate-200 pb-1 mb-2">都道府県ごとの制覇数</h4>
+<div id="statsPrefList" class="text-xs px-1 space-y-1"></div>
 </div>
-<div class="w-full h-64 relative bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-center">
-<canvas id="monthlyChart"></canvas>
+<div>
+<h4 class="font-bold text-slate-700 border-b border-slate-200 pb-1 mb-2">記録者ごとのピン数</h4>
+<div id="statsAuthorList" class="text-xs px-1 space-y-1"></div>
 </div>
 </div>
-<div id="viewPref" class="hidden space-y-2">
-<div id="prefCountList" class="divide-y divide-slate-100 text-xs"></div>
-</div>
-<div id="viewList" class="hidden space-y-2">
-<div id="spotListContainer" class="space-y-2 pb-2"></div>
+
+<!-- 一覧ビュー（アコーディオン形式） -->
+<div id="viewList" class="hidden space-y-2 pb-2">
+<div id="spotListContainer"></div>
 </div>
 </div>
 
 <div class="mt-4 text-right shrink-0 pt-2 border-t border-slate-100">
-<button onclick="closeChartModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-lg font-medium transition">閉じる</button>
+<button onclick="closeChartModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-lg font-medium transition">
+閉じる
+</button>
 </div>
 </div>
 </div>
 
-<!-- Add/Edit Modal (★ 写真スロットの改善) -->
+<!-- Add/Edit Modal -->
 <div id="spotModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
 <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto my-auto">
 <button onclick="closeAddModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
@@ -405,14 +409,13 @@ scrollbar-width: none;
 </div>
 </div>
 
-<!-- ★ 評価＆編集連動の写真スロットエリア -->
+<!-- 評価＆編集連動の写真スロットエリア -->
 <div class="space-y-2">
 <div class="flex items-center justify-between">
 <label class="block text-xs font-bold text-slate-600">思い出写真</label>
 <span id="photoLimitNotice" class="text-[10px] text-amber-600 font-medium">保存後、評価に応じて枠が増えます</span>
 </div>
 
-<!-- スロット1 (新規追加時はこれだけ) -->
 <input type="file" id="photoInput1" accept="image/*" onchange="handleImageSlotUpload(event, 0)" class="hidden">
 <div onclick="document.getElementById('photoInput1').click()" class="border-2 border-dashed border-slate-200 hover:border-rose-400 rounded-xl p-2.5 text-center cursor-pointer transition bg-slate-50 flex items-center justify-between gap-2">
 <div class="flex items-center gap-2">
@@ -424,7 +427,6 @@ scrollbar-width: none;
 </div>
 </div>
 
-<!-- スロット2 (編集時 ＆ ★4以上で解放) -->
 <div id="photoSlot2" class="hidden">
 <input type="file" id="photoInput2" accept="image/*" onchange="handleImageSlotUpload(event, 1)" class="hidden">
 <div onclick="document.getElementById('photoInput2').click()" class="border-2 border-dashed border-slate-200 hover:border-rose-400 rounded-xl p-2.5 text-center cursor-pointer transition bg-slate-50 flex items-center justify-between gap-2">
@@ -438,7 +440,6 @@ scrollbar-width: none;
 </div>
 </div>
 
-<!-- スロット3 (編集時 ＆ ★5で解放) -->
 <div id="photoSlot3" class="hidden">
 <input type="file" id="photoInput3" accept="image/*" onchange="handleImageSlotUpload(event, 2)" class="hidden">
 <div onclick="document.getElementById('photoInput3').click()" class="border-2 border-dashed border-slate-200 hover:border-rose-400 rounded-xl p-2.5 text-center cursor-pointer transition bg-slate-50 flex items-center justify-between gap-2">
@@ -476,7 +477,20 @@ scrollbar-width: none;
 </div>
 </div>
 
-<!-- Firebase Scripts -->
+<script>
+function showToast(msg) {
+const toast = document.getElementById('toast');
+document.getElementById('toastMsg').textContent = msg;
+toast.classList.remove('opacity-0', 'pointer-events-none');
+toast.classList.add('opacity-100');
+setTimeout(() => {
+toast.classList.remove('opacity-100');
+toast.classList.add('opacity-0', 'pointer-events-none');
+}, 4000);
+}
+</script>
+
+<!-- ★★★ データ同期スクリプト ★★★ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -537,6 +551,17 @@ const indicatorEl = document.getElementById('syncIndicator');
 if (indicatorEl) {
 indicatorEl.className = "w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse";
 }
+}, (err) => {
+console.error("Cloud sync error:", err);
+const statusEl = document.getElementById('statSyncStatus');
+if (statusEl) {
+statusEl.textContent = "未接続 (ローカル)";
+statusEl.className = "font-bold text-rose-600";
+}
+const indicatorEl = document.getElementById('syncIndicator');
+if (indicatorEl) {
+indicatorEl.className = "w-1.5 h-1.5 rounded-full bg-rose-500";
+}
 });
 
 window.saveSpotToCloud = async function(spot) {
@@ -560,20 +585,12 @@ console.error("Firebase init error:", e);
 }
 </script>
 
-<!-- Main Logic -->
 <script>
-function showToast(msg) {
-const toast = document.getElementById('toast');
-document.getElementById('toastMsg').textContent = msg;
-toast.classList.remove('opacity-0', 'pointer-events-none');
-toast.classList.add('opacity-100');
-setTimeout(() => {
-toast.classList.remove('opacity-100');
-toast.classList.add('opacity-0', 'pointer-events-none');
-}, 4000);
-}
+const JAPAN_BOUNDS = [
+[20.0, 122.0],
+[46.0, 153.0]
+];
 
-const JAPAN_BOUNDS = [ [20.0, 122.0], [46.0, 153.0] ];
 const PREFECTURES = [
 { name: "北海道", lat: 43.0642, lng: 141.3468, zoom: 7, areas: [{ name: "札幌市", lat: 43.0618, lng: 141.3545, zoom: 11 }] },
 { name: "青森県", lat: 40.8244, lng: 140.7400, zoom: 9, areas: [] },
@@ -647,7 +664,7 @@ window.spots = [];
 window.currentSearchLayerGroup = null;
 let currentLocationMarker = null;
 let currentFilter = 'all';
-let tempPhotoArray = [null, null, null]; // ★ 写真最大3枚まで管理
+let tempPhotoArray = [null, null, null];
 
 window.onload = function() {
 lucide.createIcons();
@@ -656,6 +673,7 @@ loadLocalStorageSpots();
 initMap();
 window.updateProgress();
 window.updateAnalytics();
+
 document.getElementById('spotDate').value = new Date().toISOString().split('T')[0];
 
 document.addEventListener('click', function(e) {
@@ -669,14 +687,8 @@ function initPrefecturesDropdown() {
 const select = document.getElementById('prefSelect');
 const spotPrefSelect = document.getElementById('spotPref');
 PREFECTURES.forEach(p => {
-const opt1 = document.createElement('option');
-opt1.value = p.name;
-opt1.textContent = p.name;
-select.appendChild(opt1);
-const opt2 = document.createElement('option');
-opt2.value = p.name;
-opt2.textContent = p.name;
-spotPrefSelect.appendChild(opt2);
+const opt1 = document.createElement('option'); opt1.value = p.name; opt1.textContent = p.name; select.appendChild(opt1);
+const opt2 = document.createElement('option'); opt2.value = p.name; opt2.textContent = p.name; spotPrefSelect.appendChild(opt2);
 });
 }
 
@@ -706,31 +718,19 @@ window.currentSearchLayerGroup = L.layerGroup().addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-attribution: '&copy; CARTO',
-subdomains: 'abcd',
-maxZoom: 18,
-minZoom: 5,
-keepBuffer: 6,
-crossOrigin: true
+attribution: '&copy; CARTO', subdomains: 'abcd', maxZoom: 18, minZoom: 5, keepBuffer: 6, crossOrigin: true
 }).addTo(map);
 
 const outerMaskPolygon = [
 [[85, -180], [85, 180], [-85, 180], [-85, -180]],
 [[46.5, 121.5], [20.0, 121.5], [20.0, 154.0], [46.5, 154.0]]
 ];
-
-L.polygon(outerMaskPolygon, {
-color: 'transparent',
-fillColor: '#e0f2fe',
-fillOpacity: 1.0,
-interactive: false
-}).addTo(map);
+L.polygon(outerMaskPolygon, { color: 'transparent', fillColor: '#e0f2fe', fillOpacity: 1.0, interactive: false }).addTo(map);
 
 map.on('rotate', () => {
 const bearing = map.getBearing ? map.getBearing() : 0;
 const compassBtn = document.getElementById('compassBtn');
 const compassIcon = document.getElementById('compassIcon');
-
 if (Math.abs(bearing) > 2) {
 compassBtn.classList.remove('hidden');
 if (compassIcon) compassIcon.style.transform = `rotate(${-bearing}deg)`;
@@ -740,9 +740,8 @@ compassBtn.classList.add('hidden');
 });
 
 map.on('click', function(e) {
-const currentZoom = map.getZoom();
 const nearestPref = findNearestPrefecture(e.latlng.lat, e.latlng.lng);
-if (currentZoom < 8) {
+if (map.getZoom() < 8) {
 zoomToPref(nearestPref);
 } else {
 clearSearch();
@@ -750,111 +749,80 @@ openAddModal(e.latlng.lat, e.latlng.lng, nearestPref);
 }
 });
 
+// ★ ズーム時にピンのサイズを再計算して描画
+map.on('zoomend', () => {
+updateMapHint();
+window.renderMarkers();
+});
+
 window.renderMarkers();
 }
 
 window.resetMapBearing = function() {
-if (map && map.setBearing) {
-map.setBearing(0);
-document.getElementById('compassBtn').classList.add('hidden');
-showToast("地図を北向きに戻しました");
-}
+if (map && map.setBearing) { map.setBearing(0); document.getElementById('compassBtn').classList.add('hidden'); showToast("地図を北向きに戻しました"); }
 };
 
 window.locateUser = function() {
-if (!navigator.geolocation) {
-showToast("ブラウザが位置情報に対応していません");
-return;
-}
+if (!navigator.geolocation) { showToast("ブラウザが位置情報に対応していません"); return; }
 showToast("現在地を取得中...（最大15秒）");
 const handleSuccess = (position) => {
-const lat = position.coords.latitude;
-const lng = position.coords.longitude;
+const lat = position.coords.latitude; const lng = position.coords.longitude;
 const prefName = findNearestPrefecture(lat, lng);
 if (currentLocationMarker) map.removeLayer(currentLocationMarker);
-
-const locIcon = L.divIcon({
-html: `<div class="current-loc-marker"><div class="current-loc-wave"></div><div class="current-loc-dot"></div></div>`,
-className: '', iconSize: [24, 24], iconAnchor: [12, 12]
-});
+const locIcon = L.divIcon({ html: `<div class="current-loc-marker"><div class="current-loc-wave"></div><div class="current-loc-dot"></div></div>`, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
 currentLocationMarker = L.marker([lat, lng], { icon: locIcon, zIndexOffset: 2000 }).addTo(map);
-
-const popupContent = `
-<div class="p-1 text-center font-sans">
-<div class="font-bold text-xs text-blue-600 mb-0.5">📍 現在地</div>
-<div class="text-[11px] text-slate-500 mb-2">${prefName}周辺</div>
-<button onclick="openAddModal(${lat}, ${lng}, '${prefName}', '')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm">ここに追加</button>
-</div>`;
-currentLocationMarker.bindPopup(popupContent, { closeButton: false }).openPopup();
+currentLocationMarker.bindPopup(`<div class="p-1 text-center font-sans"><div class="font-bold text-xs text-blue-600 mb-0.5">📍 現在地</div><div class="text-[11px] text-slate-500 mb-2">${prefName}周辺</div><button onclick="openAddModal(${lat}, ${lng}, '${prefName}', '')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm">ここに追加</button></div>`, { closeButton: false }).openPopup();
 map.flyTo([lat, lng], 17, { duration: 1.5 });
 showToast("現在地を取得しました！");
 };
-
-const getSafely = (options) => {
-return new Promise((resolve, reject) => {
+const getSafely = (options) => new Promise((resolve, reject) => {
 let isDone = false;
 navigator.geolocation.getCurrentPosition(
 (pos) => { if (!isDone) { isDone = true; resolve(pos); } },
-(err) => { if (!isDone) { isDone = true; reject(err); } },
-options
+(err) => { if (!isDone) { isDone = true; reject(err); } }, options
 );
 setTimeout(() => { if (!isDone) { isDone = true; reject({ code: 3 }); } }, options.timeout + 500);
 });
-};
-
 (async () => {
 try {
 const pos = await getSafely({ enableHighAccuracy: true, timeout: 7000, maximumAge: 0 });
 handleSuccess(pos);
 } catch (err1) {
-if (err1.code === 1) {
-alert("【位置情報の取得がブロックされています】\n\nSafariの位置情報を許可してください。\n\n1. iPhoneの「設定」アプリを開く\n2. 「プライバシーとセキュリティ」を選択\n3. 「位置情報サービス」を選択\n4. 「SafariのWebサイト」を『このAppの使用中』にしてください。");
-return;
-}
+if (err1.code === 1) { alert("【位置情報の取得がブロックされています】\n\nSafariの位置情報を許可してください。\n\n1. iPhoneの「設定」アプリを開く\n2. 「プライバシーとセキュリティ」を選択\n3. 「位置情報サービス」を選択\n4. 「SafariのWebサイト」を『このAppの使用中』にしてください。"); return; }
 showToast("GPS電波が弱いため、標準精度で再試行します...");
 try {
 const pos2 = await getSafely({ enableHighAccuracy: false, timeout: 7000, maximumAge: 60000 });
 handleSuccess(pos2);
-} catch (err2) {
-alert("位置情報を取得できませんでした。\n地下や屋内などで電波が届いていない可能性があります。");
-}
+} catch (err2) { alert("位置情報を取得できませんでした。\n地下や屋内などで電波が届いていない可能性があります。"); }
 }
 })();
 };
 
+function updateMapHint() {
+document.getElementById('mapHintText').textContent = map.getZoom() < 8 ? "都道府県エリアをタップすると拡大します" : "2本指で回転・タップでピン追加";
+}
+
 function findNearestPrefecture(lat, lng) {
-let closest = PREFECTURES[0].name;
-let minDistance = Infinity;
-PREFECTURES.forEach(p => {
-const dist = Math.hypot(p.lat - lat, p.lng - lng);
-if (dist < minDistance) { minDistance = dist; closest = p.name; }
-});
+let closest = PREFECTURES[0].name; let minDistance = Infinity;
+PREFECTURES.forEach(p => { const dist = Math.hypot(p.lat - lat, p.lng - lng); if (dist < minDistance) { minDistance = dist; closest = p.name; } });
 return closest;
 }
 
 function resetMapView() {
 clearSearch();
-if (map.setBearing) map.setBearing(0);
-document.getElementById('compassBtn').classList.add('hidden');
+if (map.setBearing) map.setBearing(0); document.getElementById('compassBtn').classList.add('hidden');
 map.flyTo([37.5, 137.5], 5, { duration: 1.2 });
-document.getElementById('prefSelect').value = "";
-document.getElementById('areaSelect').innerHTML = '<option value="">エリア...</option>';
-document.getElementById('areaSelect').disabled = true;
+document.getElementById('prefSelect').value = ""; document.getElementById('areaSelect').innerHTML = '<option value="">エリア...</option>'; document.getElementById('areaSelect').disabled = true;
 }
 
 function zoomToPref(prefName) {
 clearSearch();
 const pref = PREFECTURES.find(p => p.name === prefName);
-if (pref) {
-map.flyTo([pref.lat, pref.lng], pref.zoom, { duration: 1.2 });
-document.getElementById('prefSelect').value = prefName;
-document.getElementById('areaSelect').disabled = true;
-}
+if (pref) { map.flyTo([pref.lat, pref.lng], pref.zoom, { duration: 1.2 }); document.getElementById('prefSelect').value = prefName; document.getElementById('areaSelect').disabled = true; }
 }
 
 window.handleSearchInputChange = function() {
-const val = document.getElementById('searchInput').value.trim();
-document.getElementById('clearSearchBtn').classList.toggle('hidden', val.length === 0);
+document.getElementById('clearSearchBtn').classList.toggle('hidden', document.getElementById('searchInput').value.trim().length === 0);
 }
 
 window.clearSearch = function() {
@@ -870,10 +838,7 @@ const queryRaw = document.getElementById('searchInput').value.trim();
 const resultsDiv = document.getElementById('searchResults');
 const clearBtn = document.getElementById('clearSearchBtn');
 
-if (!queryRaw) {
-clearSearch();
-return;
-}
+if (!queryRaw) { clearSearch(); return; }
 
 clearBtn.classList.remove('hidden');
 resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center"><span class="animate-spin text-rose-500">⌛</span> 画面内のスポットを検索中...</div>`;
@@ -888,7 +853,6 @@ const zoom = map.getZoom();
 let resultsList = [];
 const seenKeys = new Set();
 
-// 1. ローカルデータ検索
 (window.spots || []).forEach(spot => {
 if ([spot.name, spot.pref, spot.comment].some(t => (t||'').toLowerCase().includes(keyword.toLowerCase()))) {
 const key = `${spot.lat.toFixed(4)},${spot.lng.toFixed(4)}`;
@@ -899,41 +863,24 @@ resultsList.push({ isLocal: true, name: spot.name, subText: `【登録済】${sp
 }
 });
 
-// 2. 外部API (OverpassAPI がメイン)
 // ズームしている時（画面内に絞り込む）だけOverpassを発動
 if (zoom >= 8) {
 const bboxOP = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-// nwr = node, way, relation 全て対象。~"${keyword}",i で大文字小文字無視の部分一致
 const opQuery = `[out:json][timeout:15];(nwr["name"~"${keyword}",i](${bboxOP}););out center 40;`;
-
 try {
-const opRes = await fetch(`https://overpass-api.de/api/interpreter`, {
-method: 'POST',
-headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-body: `data=${encodeURIComponent(opQuery)}`
-});
+const opRes = await fetch(`https://overpass-api.de/api/interpreter`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(opQuery)}` });
 const opData = await opRes.json();
 opData.elements.forEach(el => {
 const tags = el.tags || {};
 const lat = el.lat || el.center.lat;
 const lon = el.lon || el.center.lon;
 const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
-
 if (!seenKeys.has(key) && tags.name) {
 seenKeys.add(key);
-resultsList.push({
-isLocal: false,
-name: tags.name,
-subText: tags['addr:city'] ? `${tags['addr:city']}` : '現在表示中のエリア',
-lat: lat,
-lon: lon,
-prefName: findNearestPrefecture(lat, lon)
-});
+resultsList.push({ isLocal: false, name: tags.name, subText: tags['addr:city'] ? `${tags['addr:city']}` : '現在表示中のエリア', lat: lat, lon: lon, prefName: findNearestPrefecture(lat, lon) });
 }
 });
-} catch(e) {
-console.warn("Overpass API error:", e);
-}
+} catch(e) { console.warn("Overpass API error:", e); }
 } else {
 resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">検索範囲が広すぎます。<br>見つけたい県や市までズームしてから検索してください。</div>`;
 return;
@@ -946,35 +893,21 @@ return;
 
 resultsDiv.innerHTML = '';
 
-// 最大20件表示
+// 最大20件表示（検索用の一斉ピン）
+const zoomScale = map.getZoom() < 8 ? 0.5 : 1;
 resultsList.slice(0, 20).forEach((item, idx) => {
 const listNum = idx + 1;
 
-// 検索専用ピン（黒と水色）
-const iconHtml = `<div class="search-pin-container" style="width: 26px; height: 26px;"><span>${listNum}</span></div>`;
+const iconHtml = `<div class="search-pin-container" style="width: 26px; height: 26px; transform: scale(${zoomScale}); transform-origin: center center;"><span>${listNum}</span></div>`;
 const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [26, 26], iconAnchor: [13, 13] });
 const marker = L.marker([item.lat, item.lon], { icon: customIcon, zIndexOffset: 1500 }).addTo(window.currentSearchLayerGroup);
 
-const popupContent = `
-<div class="p-1 text-center font-sans">
-<div class="font-bold text-sm text-slate-800 mb-1">${item.name}</div>
-<div class="text-[10px] text-slate-500 mb-2">${item.prefName}</div>
-${item.isLocal ?
-`<button onclick="openDetailModal('${item.spotId}')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg">記録を見る</button>` :
-`<button onclick="openAddModal(${item.lat}, ${item.lon}, '${item.prefName}', '${item.name.replace(/'/g, "\\'")}')" class="bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg">ここに追加</button>`
-}
-</div>`;
-marker.bindPopup(popupContent, { closeButton: false });
+marker.bindPopup(`<div class="p-1 text-center font-sans"><div class="font-bold text-sm text-slate-800 mb-1">${item.name}</div><div class="text-[10px] text-slate-500 mb-2">${item.prefName}</div>${item.isLocal ? `<button onclick="openDetailModal('${item.spotId}')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg">記録を見る</button>` : `<button onclick="openAddModal(${item.lat}, ${item.lon}, '${item.prefName}', '${item.name.replace(/'/g, "\\'")}')" class="bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg">ここに追加</button>`}</div>`, { closeButton: false });
 
 const div = document.createElement('div');
 div.className = 'p-3 hover:bg-slate-50 cursor-pointer transition text-xs flex items-center justify-between gap-2';
 const badge = item.isLocal ? `<span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded">登録済</span>` : `<span class="bg-slate-800 text-sky-400 text-[10px] font-bold px-1.5 py-0.5 rounded">${listNum}</span>`;
-
-div.innerHTML = `
-<div class="flex-1 overflow-hidden">
-<div class="font-bold text-slate-800 flex items-center gap-1.5 truncate"><span class="truncate">${item.name}</span>${badge}</div>
-<div class="text-[10px] text-slate-400 truncate mt-0.5">${item.subText}</div>
-</div>`;
+div.innerHTML = `<div class="flex-1 overflow-hidden"><div class="font-bold text-slate-800 flex items-center gap-1.5 truncate"><span class="truncate">${item.name}</span>${badge}</div><div class="text-[10px] text-slate-400 truncate mt-0.5">${item.subText}</div></div>`;
 
 div.onclick = function() {
 resultsDiv.classList.add('hidden');
@@ -987,6 +920,7 @@ resultsDiv.appendChild(div);
 showToast(`画面内から ${Math.min(resultsList.length, 20)}件 の候補を見つけました！`);
 }
 
+// ★ ピンの描画（ズームアウト時はサイズを半分にする）
 window.renderMarkers = function() {
 if (!map) return;
 markers.forEach(m => map.removeLayer(m));
@@ -1002,6 +936,8 @@ if (!locationMap.has(key)) locationMap.set(key, []);
 locationMap.get(key).push(spot);
 });
 
+const zoomScale = map.getZoom() < 8 ? 0.5 : 1; // ズーム8未満で半分のサイズ
+
 locationMap.forEach((spotsAtLoc) => {
 spotsAtLoc.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 const primarySpot = spotsAtLoc[0];
@@ -1009,17 +945,25 @@ const genreInfo = GENRE_CONFIG[primarySpot.genre] || GENRE_CONFIG.gourmet;
 const isToday = primarySpot.genre === 'today';
 const isSpecial = primarySpot.genre === 'want' || primarySpot.genre === 'other';
 
-const pinSize = isToday ? 32 : (isSpecial ? 20 : 24);
+const basePinSize = isToday ? 32 : (isSpecial ? 20 : 24);
 const iconSize = isToday ? 16 : (isSpecial ? 11 : 13);
-const anchorSize = Math.round(pinSize / 2);
 const countBadge = spotsAtLoc.length > 1 ? `<div class="pin-badge">${spotsAtLoc.length}</div>` : '';
 
-let iconHtml = isToday ?
-`<div class="today-pin-wrapper" style="width:${pinSize}px; height:${pinSize}px;"><div class="today-pulse-ring"></div><div class="today-pulse-ring-2"></div><div class="custom-pin today-pin" style="width:${pinSize}px; height:${pinSize}px;"><i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>${countBadge}</div></div>`
+let innerHtml = isToday ?
+`<div class="today-pin-wrapper" style="width:${basePinSize}px; height:${basePinSize}px;"><div class="today-pulse-ring"></div><div class="today-pulse-ring-2"></div><div class="custom-pin today-pin" style="width:${basePinSize}px; height:${basePinSize}px;"><i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>${countBadge}</div></div>`
 :
-`<div class="custom-pin" style="background-color: ${genreInfo.color}; width: ${pinSize}px; height: ${pinSize}px;"><i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>${countBadge}</div>`;
+`<div class="custom-pin" style="background-color: ${genreInfo.color}; width: ${basePinSize}px; height: ${basePinSize}px;"><i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>${countBadge}</div>`;
 
-const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [pinSize, pinSize], iconAnchor: [anchorSize, anchorSize] });
+// スケールを適用
+const iconHtml = `<div style="transform: scale(${zoomScale}); transform-origin: center center; width: ${basePinSize}px; height: ${basePinSize}px;">${innerHtml}</div>`;
+
+const customIcon = L.divIcon({
+html: iconHtml,
+className: '',
+iconSize: [basePinSize, basePinSize],
+iconAnchor: [basePinSize / 2, basePinSize / 2]
+});
+
 const marker = L.marker([primarySpot.lat, primarySpot.lng], { icon: customIcon, zIndexOffset: isToday ? 1000 : 0 }).addTo(map);
 
 marker.on('click', (e) => {
@@ -1046,18 +990,17 @@ spots.forEach(s => { if (s.author && s.author.trim() !== "") authors.add(s.autho
 document.getElementById('statAuthors').textContent = `${Math.max(authors.size, spots.length > 0 ? 1 : 0)}人`;
 };
 
-function openChartModal() { document.getElementById('chartModal').classList.remove('hidden'); switchModalTab('chart'); }
+function openChartModal() { document.getElementById('chartModal').classList.remove('hidden'); switchModalTab('stats'); }
 function closeChartModal() { document.getElementById('chartModal').classList.add('hidden'); }
 
 function switchModalTab(tab) {
-['chart', 'pref', 'list'].forEach(t => {
+['stats', 'list'].forEach(t => {
 const btn = document.getElementById(`modalTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
 const view = document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`);
 if (t === tab) {
 btn.className = "flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition";
 view.classList.remove('hidden');
-if(tab === 'chart') setTimeout(() => renderAnalyticsChart(currentChartMode), 10);
-else if (tab === 'pref') renderPrefCountList();
+if(tab === 'stats') renderStats();
 else if (tab === 'list') renderSpotList();
 } else {
 btn.className = "flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition";
@@ -1066,91 +1009,99 @@ view.classList.add('hidden');
 });
 }
 
-function renderPrefCountList() {
-const container = document.getElementById('prefCountList');
-const counts = {};
-PREFECTURES.forEach(p => counts[p.name] = 0);
+// ★ 新しい統計画面（県別・人別のみ）
+window.renderStats = function() {
+const prefContainer = document.getElementById('statsPrefList');
+const authorContainer = document.getElementById('statsAuthorList');
+const prefCounts = {};
+PREFECTURES.forEach(p => prefCounts[p.name] = 0);
+const authorCounts = {};
+
 (window.spots || []).forEach(s => {
-if (s.genre !== 'want' && s.genre !== 'today' && s.genre !== 'other' && s.pref) counts[s.pref] = (counts[s.pref]||0) + 1;
+if (s.genre === 'want' || s.genre === 'today' || s.genre === 'other') return;
+if (s.pref && prefCounts[s.pref] !== undefined) prefCounts[s.pref]++;
+const author = s.author || '不明';
+authorCounts[author] = (authorCounts[author] || 0) + 1;
 });
-let html = '';
+
+let prefHtml = '';
 PREFECTURES.forEach(p => {
-if (counts[p.name] > 0) html += `<div class="py-2 flex items-center justify-between"><span class="font-bold text-slate-800">${p.name}</span><span class="bg-rose-100 text-rose-700 font-bold px-2.5 py-0.5 rounded-full text-xs">${counts[p.name]}個</span></div>`;
+if (prefCounts[p.name] > 0) prefHtml += `<div class="py-1.5 flex items-center justify-between border-b border-slate-50 last:border-0"><span class="text-slate-700">${p.name}</span><span class="font-bold text-rose-600">${prefCounts[p.name]} 個</span></div>`;
 });
-container.innerHTML = html === '' ? '<div class="text-center py-6 text-slate-400 text-xs">まだピンがありません</div>' : html;
+prefContainer.innerHTML = prefHtml || '<div class="text-center py-4 text-slate-400 text-xs">データなし</div>';
+
+let authorHtml = '';
+Object.keys(authorCounts).sort((a,b)=>authorCounts[b]-authorCounts[a]).forEach(a => {
+authorHtml += `<div class="py-1.5 flex items-center justify-between border-b border-slate-50 last:border-0"><span class="text-slate-700">${a}</span><span class="font-bold text-blue-600">${authorCounts[a]} 個</span></div>`;
+});
+authorContainer.innerHTML = authorHtml || '<div class="text-center py-4 text-slate-400 text-xs">データなし</div>';
 }
 
+// ★ 県別アコーディオンリスト
 function renderSpotList() {
 const container = document.getElementById('spotListContainer');
 let spots = (window.spots || []).filter(s => currentFilter === 'all' ? s.genre !== 'other' : s.genre === currentFilter).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
-let html = '';
+const prefGroups = {};
+PREFECTURES.forEach(p => prefGroups[p.name] = []);
+prefGroups['その他・不明'] = [];
+
 spots.forEach(s => {
+if (s.pref && prefGroups[s.pref]) prefGroups[s.pref].push(s);
+else prefGroups['その他・不明'].push(s);
+});
+
+let html = '';
+[...PREFECTURES.map(p=>p.name), 'その他・不明'].forEach(pName => {
+const groupSpots = prefGroups[pName];
+if (groupSpots && groupSpots.length > 0) {
+html += `
+<div class="mb-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+<button onclick="toggleAccordion('acc_${pName}')" class="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition">
+<span class="font-bold text-slate-800">${pName}</span>
+<div class="flex items-center gap-2">
+<span class="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full text-[10px]">${groupSpots.length}件</span>
+<i data-lucide="chevron-down" id="icon_${pName}" class="w-4 h-4 text-slate-400 transition-transform"></i>
+</div>
+</button>
+<div id="acc_${pName}" class="hidden flex-col gap-2 p-2 bg-slate-50/50">
+`;
+groupSpots.forEach(s => {
 const gInfo = GENRE_CONFIG[s.genre] || GENRE_CONFIG.gourmet;
 const photoCount = (s.photos && s.photos.filter(Boolean).length) || (s.photo ? 1 : 0);
 const photoIcon = photoCount > 0 ? `<i data-lucide="image" class="w-3.5 h-3.5 text-slate-400 ml-1"></i><span class="text-[10px] text-slate-400">${photoCount>1?photoCount:''}</span>` : '';
 html += `
-<div onclick="closeChartModal(); openDetailModal('${s.id}')" class="p-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50/20 cursor-pointer transition flex items-center justify-between gap-3 text-xs">
+<div onclick="closeChartModal(); openDetailModal('${s.id}')" class="p-2.5 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-white cursor-pointer transition flex items-center justify-between gap-3 text-xs bg-white">
 <div class="flex items-center gap-3 overflow-hidden flex-1">
 <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${gInfo.color}"></span>
 <div class="truncate flex-1">
 <div class="font-bold text-slate-800 text-sm truncate">${s.name}</div>
-<div class="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5"><span>${s.pref}</span><span>/</span><span>${s.date}</span>${photoIcon}</div>
+<div class="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+<span>${s.date || '未設定'}</span>${photoIcon}
 </div>
 </div>
-<div class="flex flex-col items-end shrink-0"><span class="text-[10px] text-rose-500 font-bold mb-1">詳細</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></div>
+</div>
+<div class="flex flex-col items-end shrink-0"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></div>
 </div>`;
+});
+html += `</div></div>`;
+}
 });
 container.innerHTML = html === '' ? '<div class="text-center py-6 text-slate-400 text-xs">まだスポットがありません</div>' : html;
 lucide.createIcons();
 }
 
-function switchChartMode(mode) {
-currentChartMode = mode;
-['monthly', 'weekly', 'daily'].forEach(m => {
-document.getElementById(`chartTab${m.charAt(0).toUpperCase() + m.slice(1)}`).className = m === mode ? "flex-1 py-1 rounded bg-white shadow-sm text-slate-800 transition" : "flex-1 py-1 rounded text-slate-500 hover:text-slate-800 transition";
-});
-renderAnalyticsChart(mode);
+window.toggleAccordion = function(id) {
+const el = document.getElementById(id);
+const icon = document.getElementById(id.replace('acc_', 'icon_'));
+if (el.classList.contains('hidden')) {
+el.classList.remove('hidden'); el.classList.add('flex'); icon.style.transform = 'rotate(180deg)';
+} else {
+el.classList.add('hidden'); el.classList.remove('flex'); icon.style.transform = 'rotate(0deg)';
+}
 }
 
-function getISOWeekKey(d) {
-const date = new Date(d.getTime()); date.setHours(0, 0, 0, 0); date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
-const week1 = new Date(date.getFullYear(), 0, 4);
-const weekNum = 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
-return `${date.getFullYear()}-W${weekNum < 10 ? '0' + weekNum : weekNum}`;
-}
-
-function renderAnalyticsChart(mode) {
-const canvas = document.getElementById('monthlyChart'); if(!canvas) return;
-const counts = {};
-(window.spots || []).forEach(s => {
-if (s.genre === 'want' || s.genre === 'today' || s.genre === 'other' || !s.date) return;
-const d = new Date(s.date);
-if (isNaN(d.getTime())) return;
-const key = mode === 'monthly' ? s.date.substring(0, 7) : (mode === 'weekly' ? getISOWeekKey(d) : s.date.substring(0, 10));
-counts[key] = (counts[key] || 0) + 1;
-});
-
-let sortedKeys = Object.keys(counts).sort();
-if (sortedKeys.length === 0) {
-const now = new Date();
-for (let i = 5; i >= 0; i--) {
-if (mode === 'monthly') counts[new Date(now.getFullYear(), now.getMonth() - i, 1).toISOString().substring(0, 7)] = 0;
-else if (mode === 'daily') { const d=new Date(); d.setDate(d.getDate()-i); counts[d.toISOString().substring(0, 10)] = 0; }
-else { const d=new Date(); d.setDate(d.getDate()-(i*7)); counts[getISOWeekKey(d)] = 0; }
-}
-sortedKeys = Object.keys(counts).sort();
-}
-
-if (chartInstance) chartInstance.destroy();
-chartInstance = new Chart(canvas.getContext('2d'), {
-type: 'bar',
-data: { labels: sortedKeys, datasets: [{ label: '増加数', data: sortedKeys.map(k => counts[k]), backgroundColor: 'rgba(244, 63, 94, 0.75)', borderColor: 'rgb(244, 63, 94)', borderWidth: 2, borderRadius: 8 }] },
-options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-});
-}
-
-// ★ 完全版：写真スロット表示制御ロジック
+// ★ 写真スロットの表示制御（評価・新規/編集連動）
 window.updatePhotoSlotVisibility = function() {
 const isEdit = !!document.getElementById('spotId').value;
 const rating = parseInt(document.getElementById('spotRating').value || '5');
@@ -1159,12 +1110,10 @@ const slot3 = document.getElementById('photoSlot3');
 const notice = document.getElementById('photoLimitNotice');
 
 if (!isEdit) {
-// 新規作成時は強制的に1枚のみ
 slot2.classList.add('hidden');
 slot3.classList.add('hidden');
 notice.textContent = "保存後、評価に応じてさらに写真を追加できます";
 } else {
-// 編集時は評価に応じて枠を解放
 slot2.classList.toggle('hidden', rating < 4);
 slot3.classList.toggle('hidden', rating < 5);
 
@@ -1195,7 +1144,7 @@ document.getElementById('spotDate').value = new Date().toISOString().split('T')[
 
 document.getElementById('modalTitle').innerHTML = '<i data-lucide="map-pin" class="w-5 h-5 text-rose-500"></i><span>思い出のスポットを保存</span>';
 
-updatePhotoSlotVisibility(); // 新規作成モードとしてUIを更新
+updatePhotoSlotVisibility();
 document.getElementById('spotModal').classList.remove('hidden');
 lucide.createIcons();
 }
@@ -1205,7 +1154,7 @@ closeDetailModal();
 openAddModal(lat, lng, pref, name);
 };
 
-// ★ 完全版：編集時のデータ復元
+// ★ 編集時のデータ復元（配列対応）
 window.editSpot = function(id) {
 const spot = (window.spots || []).find(s => s.id === id);
 if (!spot) return;
@@ -1223,12 +1172,9 @@ document.getElementById('spotRating').value = spot.rating || 5;
 document.getElementById('spotDate').value = spot.date || new Date().toISOString().split('T')[0];
 document.getElementById('spotComment').value = spot.comment || '';
 
-// 既存の写真データを配列に復元
 tempPhotoArray = [null, null, null];
 if (spot.photos && Array.isArray(spot.photos)) {
-for(let i=0; i<3; i++) {
-if(spot.photos[i]) tempPhotoArray[i] = spot.photos[i];
-}
+for(let i=0; i<3; i++) { if(spot.photos[i]) tempPhotoArray[i] = spot.photos[i]; }
 } else if (spot.photo) {
 tempPhotoArray[0] = spot.photo;
 }
@@ -1236,38 +1182,29 @@ tempPhotoArray[0] = spot.photo;
 for(let i=0; i<3; i++) {
 const imgEl = document.getElementById(`photoImg${i+1}`);
 const boxEl = document.getElementById(`photoPreviewBox${i+1}`);
-if (tempPhotoArray[i]) {
-imgEl.src = tempPhotoArray[i];
-boxEl.classList.remove('hidden');
-} else {
-imgEl.src = '';
-boxEl.classList.add('hidden');
-}
+if (tempPhotoArray[i]) { imgEl.src = tempPhotoArray[i]; boxEl.classList.remove('hidden'); }
+else { imgEl.src = ''; boxEl.classList.add('hidden'); }
 }
 
 document.getElementById('modalTitle').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-indigo-500"></i><span>スポット情報を編集</span>';
-updatePhotoSlotVisibility(); // 編集モードとして枠を計算
+updatePhotoSlotVisibility();
 
 document.getElementById('spotModal').classList.remove('hidden');
 lucide.createIcons();
 }
 
-function closeAddModal() {
-document.getElementById('spotModal').classList.add('hidden');
-}
+function closeAddModal() { document.getElementById('spotModal').classList.add('hidden'); }
 
 window.handleImageSlotUpload = function(e, slotIdx) {
 const file = e.target.files[0];
 if (!file) return;
-
 const reader = new FileReader();
 reader.onload = function(evt) {
 const img = new Image();
 img.onload = function() {
 const canvas = document.createElement('canvas');
 const MAX_WIDTH = 500;
-let width = img.width;
-let height = img.height;
+let width = img.width; let height = img.height;
 if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
 canvas.width = width; canvas.height = height;
 const ctx = canvas.getContext('2d');
@@ -1283,7 +1220,6 @@ img.src = evt.target.result;
 reader.readAsDataURL(file);
 }
 
-// ★ 完全版：保存時に評価に応じた写真だけを抽出
 window.saveSpot = function(e) {
 e.preventDefault();
 
