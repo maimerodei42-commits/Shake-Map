@@ -25,11 +25,6 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <style>
-:root {
-/* ★ ズームに合わせてJSから動的に書き換わるスケール変数 */
---pin-scale: 1;
-}
-
 #map {
 height: calc(100vh - 200px);
 min-height: 420px;
@@ -42,10 +37,8 @@ touch-action: pan-x pan-y pinch-zoom;
 transition: opacity 0.15s ease-in-out;
 }
 
-/* ★ なめらかにサイズが変わるピンのコンテナ */
+/* ズームバグ防止のため transform: scale は使用せず、ラッパーとしてのみ機能させる */
 .scaled-pin-container {
-transform: scale(var(--pin-scale));
-transform-origin: center center;
 display: flex;
 align-items: center;
 justify-content: center;
@@ -61,6 +54,7 @@ font-weight: bold;
 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 border: 1.5px solid white;
 position: relative;
+transition: all 0.2s ease;
 }
 
 /* 検索専用ピン */
@@ -150,7 +144,6 @@ border: 2px solid #ffffff !important;
 background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
 }
 
-/* バッジのサイズもピンに合わせて少し小型化 */
 .pin-badge {
 position: absolute;
 top: -4px;
@@ -384,7 +377,7 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 </div>
 <div>
 <label class="block text-xs font-bold text-slate-600 mb-1">ジャンル <span class="text-rose-500">*</span></label>
-<select id="spotGenre" required class="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:outline-none">
+<select id="spotGenre" required onchange="handleGenreChange()" class="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:outline-none">
 <option value="gourmet">ご飯 (赤)</option>
 <option value="sightseeing">遊び (青)</option>
 <option value="souvenir">フォト (黄)</option>
@@ -397,7 +390,7 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 
 <div class="grid grid-cols-2 gap-3">
 <div>
-<label class="block text-xs font-bold text-slate-600 mb-1">満足度 (★1〜5)</label>
+<label id="ratingLabel" class="block text-xs font-bold text-slate-600 mb-1">満足度 (★1〜5)</label>
 <select id="spotRating" onchange="updatePhotoSlotVisibility()" class="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:outline-none">
 <option value="5">★★★★★ (殿堂)</option>
 <option value="4">★★★★☆ (大満足)</option>
@@ -479,6 +472,14 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 </div>
 </div>
 
+<!-- Image Fullscreen Modal -->
+<div id="imageModal" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[100] hidden flex items-center justify-center p-2 cursor-pointer" onclick="closeImageModal()">
+<img id="fullSizeImage" src="" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onclick="event.stopPropagation()">
+<button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-300 hover:text-white p-2 bg-slate-800/50 rounded-full transition">
+<i data-lucide="x" class="w-6 h-6"></i>
+</button>
+</div>
+
 <script>
 function showToast(msg) {
 const toast = document.getElementById('toast');
@@ -490,6 +491,16 @@ toast.classList.remove('opacity-100');
 toast.classList.add('opacity-0', 'pointer-events-none');
 }, 4000);
 }
+
+window.openImageModal = function(src) {
+document.getElementById('fullSizeImage').src = src;
+document.getElementById('imageModal').classList.remove('hidden');
+};
+
+window.closeImageModal = function() {
+document.getElementById('imageModal').classList.add('hidden');
+document.getElementById('fullSizeImage').src = '';
+};
 </script>
 
 <!-- ★★★ データ同期＆自動消去スクリプト ★★★ -->
@@ -685,17 +696,6 @@ const opt2 = document.createElement('option'); opt2.value = p.name; opt2.textCon
 });
 }
 
-// ★ CSS変数を利用してズームに合わせてスケールを滑らかに変更する機能
-window.updatePinScale = function() {
-if (!map) return;
-const zoom = map.getZoom();
-// ズーム5の時にスケール0.5、ズーム15の時にスケール1.0になるように計算
-let scale = 0.5 + ((zoom - 5) / 10) * 0.5;
-if (scale > 1) scale = 1;
-if (scale < 0.4) scale = 0.4;
-document.documentElement.style.setProperty('--pin-scale', scale);
-};
-
 function initMap() {
 map = L.map('map', {
 zoomControl: false,
@@ -731,11 +731,6 @@ const outerMaskPolygon = [
 ];
 L.polygon(outerMaskPolygon, { color: 'transparent', fillColor: '#e0f2fe', fillOpacity: 1.0, interactive: false }).addTo(map);
 
-// ★ ズーム中にスケールをリアルタイム更新する（なめらかなサイズ変化）
-map.on('zoom', () => {
-window.updatePinScale();
-});
-
 map.on('rotate', () => {
 const bearing = map.getBearing ? map.getBearing() : 0;
 const compassBtn = document.getElementById('compassBtn');
@@ -758,13 +753,12 @@ openAddModal(e.latlng.lat, e.latlng.lng, nearestPref);
 }
 });
 
+// ★ ズーム完了時（指を離したとき）に再計算して固定サイズのピンを再描画（バグ回避）
 map.on('zoomend', () => {
-window.updatePinScale();
+window.renderMarkers();
 updateMapHint();
-// ※チラツキ防止のため、ここでは renderMarkers() を呼び出さない
 });
 
-window.updatePinScale(); // 初期表示時のスケール設定
 window.renderMarkers();
 }
 
@@ -780,7 +774,6 @@ const lat = position.coords.latitude; const lng = position.coords.longitude;
 const prefName = findNearestPrefecture(lat, lng);
 if (currentLocationMarker) map.removeLayer(currentLocationMarker);
 
-// ★ 現在地ピンもスケール対象にする
 const locIcon = L.divIcon({ html: `<div class="scaled-pin-container current-loc-marker" style="width:20px; height:20px;"><div class="current-loc-wave"></div><div class="current-loc-dot"></div></div>`, className: '', iconSize: [20, 20], iconAnchor: [10, 10] });
 currentLocationMarker = L.marker([lat, lng], { icon: locIcon, zIndexOffset: 2000 }).addTo(map);
 currentLocationMarker.bindPopup(`<div class="p-1 text-center font-sans"><div class="font-bold text-xs text-blue-600 mb-0.5">📍 現在地</div><div class="text-[11px] text-slate-500 mb-2">${prefName}周辺</div><button onclick="openAddModal(${lat}, ${lng}, '${prefName}', '')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm">ここに追加</button></div>`, { closeButton: false }).openPopup();
@@ -903,7 +896,6 @@ return;
 
 resultsDiv.innerHTML = '';
 
-// ★ 検索ピンもスケール対象クラス(scaled-pin-container)を付与
 resultsList.slice(0, 20).forEach((item, idx) => {
 const listNum = idx + 1;
 
@@ -929,11 +921,17 @@ resultsDiv.appendChild(div);
 showToast(`画面内から ${Math.min(resultsList.length, 20)}件 の候補を見つけました！`);
 }
 
-// ★ ベースのサイズを全体的に小さくし、スケール対応
+// ★ ズームレベルに応じてJSでサイズを固定計算して再生成
 window.renderMarkers = function() {
 if (!map) return;
 markers.forEach(m => map.removeLayer(m));
 markers = [];
+
+// スケール計算（5で0.5倍、15で1.0倍）
+const zoom = map.getZoom();
+let scale = 0.5 + ((zoom - 5) / 10) * 0.5;
+if (scale > 1) scale = 1;
+if (scale < 0.4) scale = 0.4;
 
 const locationMap = new Map();
 (window.spots || []).forEach(spot => {
@@ -952,10 +950,14 @@ const genreInfo = GENRE_CONFIG[primarySpot.genre] || GENRE_CONFIG.gourmet;
 const isToday = primarySpot.genre === 'today';
 const isSpecial = primarySpot.genre === 'want' || primarySpot.genre === 'other';
 
-// サイズのベースを小型化
-const basePinSize = isToday ? 26 : (isSpecial ? 16 : 20);
-const iconSize = isToday ? 14 : (isSpecial ? 9 : 11);
+// ベースサイズにスケールを乗算して固定値化する
+const basePinSizeRaw = isToday ? 26 : (isSpecial ? 16 : 20);
+const iconSizeRaw = isToday ? 14 : (isSpecial ? 9 : 11);
+
+const basePinSize = Math.round(basePinSizeRaw * scale);
+const iconSize = Math.round(iconSizeRaw * scale);
 const anchorSize = Math.round(basePinSize / 2);
+
 const countBadge = spotsAtLoc.length > 1 ? `<div class="pin-badge">${spotsAtLoc.length}</div>` : '';
 
 let innerHtml = isToday ?
@@ -963,7 +965,6 @@ let innerHtml = isToday ?
 :
 `<div class="custom-pin" style="background-color: ${genreInfo.color}; width: ${basePinSize}px; height: ${basePinSize}px;"><i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>${countBadge}</div>`;
 
-// CSS変数で拡大縮小するクラスを付与
 const iconHtml = `<div class="scaled-pin-container" style="width: ${basePinSize}px; height: ${basePinSize}px;">${innerHtml}</div>`;
 
 const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [basePinSize, basePinSize], iconAnchor: [anchorSize, anchorSize] });
@@ -1099,6 +1100,43 @@ el.classList.add('hidden'); el.classList.remove('flex'); icon.style.transform = 
 }
 }
 
+// ★ 行きたい！選択時の評価ラベル＆選択肢変更ロジック
+window.handleGenreChange = function() {
+updateRatingOptions();
+updatePhotoSlotVisibility();
+};
+
+window.updateRatingOptions = function() {
+const genre = document.getElementById('spotGenre').value;
+const ratingSelect = document.getElementById('spotRating');
+const label = document.getElementById('ratingLabel');
+const currentVal = ratingSelect.value;
+
+ratingSelect.innerHTML = '';
+
+if (genre === 'want') {
+label.textContent = "行きたい度";
+ratingSelect.innerHTML = `
+<option value="5">★★★★★</option>
+<option value="4">★★★★☆</option>
+<option value="3">★★★☆☆</option>
+<option value="2">★★☆☆☆</option>
+<option value="1">★☆☆☆☆</option>
+`;
+} else {
+label.textContent = "満足度 (★1〜5)";
+ratingSelect.innerHTML = `
+<option value="5">★★★★★ (殿堂)</option>
+<option value="4">★★★★☆ (大満足)</option>
+<option value="3">★★★☆☆ (満足)</option>
+<option value="2">★★☆☆☆ (いいね)</option>
+<option value="1">★☆☆☆☆ (OK)</option>
+`;
+}
+
+ratingSelect.value = currentVal || '5';
+};
+
 window.updatePhotoSlotVisibility = function() {
 const isEdit = !!document.getElementById('spotId').value;
 const rating = parseInt(document.getElementById('spotRating').value || '5');
@@ -1138,9 +1176,11 @@ if (name) document.getElementById('spotName').value = name;
 document.getElementById('spotPref').value = pref || findNearestPrefecture(lat || center.lat, lng || center.lng);
 document.getElementById('spotAuthor').value = 'あつき';
 document.getElementById('spotDate').value = new Date().toISOString().split('T')[0];
+document.getElementById('spotGenre').value = 'gourmet'; // 初期化
 
 document.getElementById('modalTitle').innerHTML = '<i data-lucide="map-pin" class="w-5 h-5 text-rose-500"></i><span>思い出のスポットを保存</span>';
 
+updateRatingOptions();
 updatePhotoSlotVisibility();
 document.getElementById('spotModal').classList.remove('hidden');
 lucide.createIcons();
@@ -1164,6 +1204,7 @@ document.getElementById('spotAuthor').value = spot.author || 'あつき';
 document.getElementById('spotName').value = spot.name;
 document.getElementById('spotPref').value = spot.pref;
 document.getElementById('spotGenre').value = spot.genre;
+updateRatingOptions(); // ジャンルをセットした後に呼び出す
 document.getElementById('spotRating').value = spot.rating || 5;
 document.getElementById('spotDate').value = spot.date || new Date().toISOString().split('T')[0];
 document.getElementById('spotComment').value = spot.comment || '';
@@ -1291,8 +1332,13 @@ ${spots.length > 1 ? `<div class="flex items-center justify-between text-[11px] 
 <div class="flex overflow-x-auto gap-3 snap-x snap-mandatory pb-2 -mx-1 px-1 no-scrollbar">
 ${spots.map((spot, idx) => {
 const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet;
-const isNoStarGenre = spot.genre === 'want' || spot.genre === 'other';
-const stars = isNoStarGenre ? genreInfo.label : (RATING_LABELS[spot.rating] || '★'.repeat(spot.rating));
+const isWant = spot.genre === 'want';
+const isOther = spot.genre === 'other';
+
+// ★「行きたい！」の場合はテキストなしで星のみ
+const stars = isOther ? genreInfo.label :
+(isWant ? '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating) : (RATING_LABELS[spot.rating] || '★'.repeat(spot.rating)));
+
 const photos = (spot.photos && spot.photos.length > 0) ? spot.photos : (spot.photo ? [spot.photo] : []);
 
 return `
@@ -1312,10 +1358,18 @@ ${spot.author ? `<span class="text-[11px] bg-slate-200/70 text-slate-700 px-2 py
 
 ${photos.length > 0 ? `
 <div class="space-y-1">
-<div class="flex overflow-x-auto gap-2 snap-x snap-mandatory rounded-xl bg-white border border-slate-200/60 p-1.5 max-h-64 no-scrollbar">
-${photos.map((p, pIdx) => `<div class="min-w-full snap-center flex items-center justify-center relative"><img src="${p}" class="max-w-full max-h-60 object-contain rounded-lg">${photos.length > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">${pIdx + 1}/${photos.length}</span>` : ''}</div>`).join('')}
+<!-- ★ 画像を横並び（48%幅）にし、タップで拡大表示できるように改善 -->
+<div class="flex overflow-x-auto gap-2 snap-x snap-mandatory rounded-xl bg-white border border-slate-200/60 p-1.5 no-scrollbar">
+${photos.map((p, pIdx) => `
+<div class="shrink-0 w-[48%] max-w-[200px] snap-center flex items-center justify-center relative cursor-pointer group" onclick="openImageModal('${p}')">
+<div class="w-full aspect-square relative overflow-hidden rounded-lg shadow-sm border border-slate-200/60">
+<img src="${p}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
 </div>
-${photos.length > 1 ? `<p class="text-[10px] text-center text-slate-400 font-medium">横スライドで他の写真を表示（全${photos.length}枚）</p>` : ''}
+${photos.length > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-bold z-10">${pIdx + 1}/${photos.length}</span>` : ''}
+</div>
+`).join('')}
+</div>
+<p class="text-[10px] text-center text-slate-400 font-medium">タップして写真を拡大（全${photos.length}枚）</p>
 </div>
 ` : ''}
 
