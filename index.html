@@ -554,9 +554,9 @@ inertia: true, inertiaDeceleration: 2500, easeLinearity: 0.2
 window.currentSearchLayerGroup = L.layerGroup().addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// ★ デフォルトレイヤー（国土地理院 淡色地図）API KEY REQUIREDを回避するクリーンなマップ
-baseTileLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
-attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+// ★ デフォルトレイヤー（CARTO Voyagerに近いシンプルで美しい地図）APIキー不要で透かしなし
+baseTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+attribution: 'Tiles &copy; Esri',
 maxZoom: 18, minZoom: 5, keepBuffer: 6
 }).addTo(map);
 
@@ -584,7 +584,7 @@ map.on('zoomend', () => { window.renderMarkers(); updateMapHint(); });
 window.renderMarkers();
 }
 
-// ★ 地図スタイルの切り替え（国土地理院 ↔ OSM詳細地図）
+// ★ 地図スタイルの切り替え（シンプル ↔ OSM詳細地図）
 window.toggleMapStyle = function() {
 if (currentMapStyle === 'default') {
 map.removeLayer(baseTileLayer);
@@ -596,8 +596,8 @@ currentMapStyle = 'detail';
 showToast("詳細な地図（建物名あり）に切り替えました");
 } else {
 map.removeLayer(baseTileLayer);
-baseTileLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
-attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+baseTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+attribution: 'Tiles &copy; Esri',
 maxZoom: 18, minZoom: 5, keepBuffer: 6
 }).addTo(map);
 currentMapStyle = 'default';
@@ -684,7 +684,6 @@ resultsList.push({ isLocal: true, name: spot.name, subText: `【登録済】${sp
 // 2. Nominatim API を使用した強力なGeocoding検索
 try {
 const bounds = map.getBounds();
-// viewboxを利用して現在の表示領域を優先検索
 const viewbox = `${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}`;
 const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(keyword)}&countrycodes=jp&limit=15&viewbox=${viewbox}&bounded=0&addressdetails=1`;
 const res = await fetch(url, { headers: { 'Accept-Language': 'ja' } });
