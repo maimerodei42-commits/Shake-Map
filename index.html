@@ -29,12 +29,19 @@ height: calc(100vh - 200px);
 min-height: 420px;
 width: 100%;
 z-index: 1;
-background-color: #e0f2fe;
+/* 背景を純白に */
+background-color: #ffffff;
 touch-action: pan-x pan-y pinch-zoom;
 }
 .leaflet-tile {
 transition: opacity 0.15s ease-in-out;
 }
+
+/* ★ 道路や不要な情報がないグレーマップを、さらに白く飛ばしてキャンバス化 ★ */
+.white-canvas-map {
+filter: brightness(1.2) contrast(0.8);
+}
+
 .scaled-pin-container {
 display: flex;
 align-items: center;
@@ -554,17 +561,25 @@ inertia: true, inertiaDeceleration: 2500, easeLinearity: 0.2
 window.currentSearchLayerGroup = L.layerGroup().addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// ★ デフォルトレイヤー（CARTO Voyagerに近いシンプルで美しい地図）APIキー不要で透かしなし
-baseTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-attribution: 'Tiles &copy; Esri',
-maxZoom: 18, minZoom: 5, keepBuffer: 6
-}).addTo(map);
+// ★ 道路や不要な情報が描画されない「Esri Light Gray Canvas」をベースに設定 ★
+baseTileLayer = L.layerGroup([
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+attribution: '&copy; Esri',
+maxNativeZoom: 16, maxZoom: 18, keepBuffer: 6,
+className: 'white-canvas-map' // CSSフィルターでさらに白く飛ばす
+}),
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+maxNativeZoom: 16, maxZoom: 18, keepBuffer: 6
+// ラベルは文字が読めるようにそのまま表示
+})
+]).addTo(map);
 
 const outerMaskPolygon = [
 [[85, -180], [85, 180], [-85, 180], [-85, -180]],
 [[46.5, 121.5], [20.0, 121.5], [20.0, 154.0], [46.5, 154.0]]
 ];
-L.polygon(outerMaskPolygon, { color: 'transparent', fillColor: '#e0f2fe', fillOpacity: 1.0, interactive: false }).addTo(map);
+// マスク部分も純白（#ffffff）に設定
+L.polygon(outerMaskPolygon, { color: 'transparent', fillColor: '#ffffff', fillOpacity: 1.0, interactive: false }).addTo(map);
 
 map.on('rotate', () => {
 const bearing = map.getBearing ? map.getBearing() : 0;
@@ -584,10 +599,11 @@ map.on('zoomend', () => { window.renderMarkers(); updateMapHint(); });
 window.renderMarkers();
 }
 
-// ★ 地図スタイルの切り替え（シンプル ↔ OSM詳細地図）
+// ★ 地図スタイルの切り替え
 window.toggleMapStyle = function() {
 if (currentMapStyle === 'default') {
 map.removeLayer(baseTileLayer);
+// 詳細地図（OSM）は filter をかけず、鮮やかに表示する
 baseTileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OSM</a>',
 maxZoom: 18, minZoom: 5, keepBuffer: 6
@@ -596,12 +612,19 @@ currentMapStyle = 'detail';
 showToast("詳細な地図（建物名あり）に切り替えました");
 } else {
 map.removeLayer(baseTileLayer);
-baseTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-attribution: 'Tiles &copy; Esri',
-maxZoom: 18, minZoom: 5, keepBuffer: 6
-}).addTo(map);
+// デフォルト地図に戻す時は再度レイヤーグループを追加
+baseTileLayer = L.layerGroup([
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+attribution: '&copy; Esri',
+maxNativeZoom: 16, maxZoom: 18, keepBuffer: 6,
+className: 'white-canvas-map'
+}),
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+maxNativeZoom: 16, maxZoom: 18, keepBuffer: 6
+})
+]).addTo(map);
 currentMapStyle = 'default';
-showToast("シンプルな地図に切り替えました");
+showToast("シンプルな白地図風に切り替えました");
 }
 window.renderMarkers();
 };
@@ -670,7 +693,6 @@ const keyword = queryRaw.replace(/[\\"']/g, '');
 let resultsList = [];
 const seenKeys = new Set();
 
-// 1. ローカル（登録済みスポット）の検索
 (window.spots || []).forEach(spot => {
 if ([spot.name, spot.pref, spot.comment].some(t => (t||'').toLowerCase().includes(keyword.toLowerCase()))) {
 const key = `${spot.lat.toFixed(4)},${spot.lng.toFixed(4)}`;
@@ -681,7 +703,6 @@ resultsList.push({ isLocal: true, name: spot.name, subText: `【登録済】${sp
 }
 });
 
-// 2. Nominatim API を使用した強力なGeocoding検索
 try {
 const bounds = map.getBounds();
 const viewbox = `${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}`;
