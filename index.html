@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<!-- 検索エンジンに登録させないための魔法の1行 -->
 <meta name="robots" content="noindex, nofollow">
 <title>しゃけmap - 全国制覇旅マップ</title>
 
@@ -18,7 +17,7 @@
 <!-- Leaflet CSS & JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Leaflet Rotate (地図回転プラグイン) -->
+<!-- Leaflet Rotate -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.css" />
 <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
 <!-- Lucide Icons -->
@@ -36,14 +35,11 @@ touch-action: pan-x pan-y pinch-zoom;
 .leaflet-tile {
 transition: opacity 0.15s ease-in-out;
 }
-
-/* ズームバグ防止のため transform: scale は使用せず、ラッパーとしてのみ機能させる */
 .scaled-pin-container {
 display: flex;
 align-items: center;
 justify-content: center;
 }
-
 .custom-pin {
 display: flex;
 align-items: center;
@@ -56,8 +52,6 @@ border: 1.5px solid white;
 position: relative;
 transition: all 0.2s ease;
 }
-
-/* 検索専用ピン */
 .search-pin-container {
 display: flex;
 align-items: center;
@@ -75,8 +69,6 @@ animation: searchBounce 0.6s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0
 0% { transform: translateY(0); }
 100% { transform: translateY(-4px); }
 }
-
-/* 現在地アイコン */
 .current-loc-marker {
 position: relative;
 display: flex;
@@ -105,8 +97,6 @@ z-index: 1;
 0% { transform: scale(0.4); opacity: 0.9; }
 100% { transform: scale(2.2); opacity: 0; }
 }
-
-/* 「今日の俺」専用の波紋パルスエフェクト */
 .today-pin-wrapper {
 position: relative;
 display: flex;
@@ -143,7 +133,6 @@ box-shadow: 0 0 12px rgba(16, 185, 129, 0.7), 0 3px 6px rgba(0, 0, 0, 0.3) !impo
 border: 2px solid #ffffff !important;
 background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
 }
-
 .pin-badge {
 position: absolute;
 top: -4px;
@@ -161,14 +150,12 @@ justify-content: center;
 border: 1.5px solid white;
 box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
-
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 </head>
 <body class="bg-amber-50/50 text-slate-800 font-sans min-h-screen flex flex-col select-none">
 
-<!-- Header Section -->
 <header class="bg-white/95 backdrop-blur-md border-b border-amber-100 shadow-sm sticky top-0 z-20">
 <div class="max-w-6xl mx-auto px-3 py-1.5 space-y-1.5">
 <div class="flex items-center justify-between gap-2 flex-wrap">
@@ -183,22 +170,14 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 <select id="prefSelect" onchange="zoomToPref(this.value)" class="text-xs bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-rose-400">
 <option value="">都道府県...</option>
 </select>
-
-<select id="areaSelect" disabled onchange="zoomToArea(this.value)" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-rose-400 disabled:opacity-50 disabled:cursor-not-allowed">
-<option value="">エリア...</option>
-</select>
-
 <button onclick="resetMapView()" class="flex items-center gap-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg transition font-medium">
-<i data-lucide="map" class="w-3.5 h-3.5"></i>
-<span class="hidden sm:inline">全体</span>
+<i data-lucide="map" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">全体</span>
 </button>
 <button onclick="openChartModal()" class="flex items-center gap-1 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 rounded-lg transition font-medium">
-<i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
-<span>統計・一覧</span>
+<i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i><span>統計・一覧</span>
 </button>
 <button onclick="openAddModal()" class="flex items-center gap-1 text-xs bg-rose-500 hover:bg-rose-600 text-white px-2.5 py-1 rounded-lg shadow-sm transition font-medium">
-<i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
-<span>追加</span>
+<i data-lucide="plus-circle" class="w-3.5 h-3.5"></i><span>追加</span>
 </button>
 </div>
 </div>
@@ -210,13 +189,11 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 </div>
 <span class="text-slate-300">|</span>
 <div class="flex items-center gap-1">
-<span class="text-slate-400">総数:</span>
-<span id="statTotalPins" class="font-bold text-slate-700">0個</span>
+<span class="text-slate-400">総数:</span><span id="statTotalPins" class="font-bold text-slate-700">0個</span>
 </div>
 <span class="text-slate-300">|</span>
 <div class="flex items-center gap-1 font-semibold">
-<span class="text-slate-400">制覇:</span>
-<span id="progressStats" class="text-rose-600 font-bold">0/47 (0%)</span>
+<span class="text-slate-400">制覇:</span><span id="progressStats" class="text-rose-600 font-bold">0/47 (0%)</span>
 </div>
 </div>
 
@@ -224,13 +201,11 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 <div class="sm:col-span-2 relative">
 <div class="flex items-center gap-1.5 bg-slate-100/90 rounded-lg px-2 py-1 border border-slate-200 focus-within:border-rose-400 focus-within:ring-1 focus-within:ring-rose-200 transition">
 <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400"></i>
-<input type="text" id="searchInput" oninput="handleSearchInputChange()" placeholder="タワー、うどん等、表示中のマップから検索..." onkeydown="if(event.key==='Enter') searchLocation()" class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none">
+<input type="text" id="searchInput" oninput="handleSearchInputChange()" placeholder="お店や観光地を賢く検索..." onkeydown="if(event.key==='Enter') searchLocation()" class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none">
 <button id="clearSearchBtn" onclick="clearSearch()" class="hidden p-1 text-slate-400 hover:text-slate-600 transition bg-slate-200/60 rounded-full">
 <i data-lucide="x" class="w-3 h-3"></i>
 </button>
-<button onclick="searchLocation()" class="bg-slate-800 hover:bg-slate-900 text-white text-[11px] px-2.5 py-0.5 rounded transition font-medium whitespace-nowrap">
-検索
-</button>
+<button onclick="searchLocation()" class="bg-slate-800 hover:bg-slate-900 text-white text-[11px] px-2.5 py-0.5 rounded transition font-medium whitespace-nowrap">検索</button>
 </div>
 <div id="searchResults" class="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-50 hidden max-h-56 overflow-y-auto divide-y divide-slate-100"></div>
 </div>
@@ -251,7 +226,6 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 
 <!-- Main Content -->
 <main class="flex-1 relative max-w-6xl w-full mx-auto p-1.5 sm:p-3 flex flex-col gap-1.5">
-<!-- Filter Bar -->
 <div class="flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-xl shadow-sm text-xs border border-slate-100 overflow-x-auto no-scrollbar">
 <span class="font-bold text-slate-400 text-[11px] whitespace-nowrap">ジャンル:</span>
 <div class="flex items-center gap-1.5">
@@ -277,7 +251,6 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 </div>
 </div>
 
-<!-- Map Area -->
 <div class="relative rounded-2xl overflow-hidden shadow-md border border-slate-200">
 <div id="map"></div>
 
@@ -287,116 +260,77 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 </div>
 
 <div class="absolute bottom-32 right-3 flex flex-col gap-2.5 z-[1000]">
+<button onclick="toggleMapStyle()" class="bg-white/95 backdrop-blur-md p-3 rounded-full shadow-xl border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center text-indigo-600" title="地図の切り替え">
+<i data-lucide="layers" class="w-5 h-5"></i>
+</button>
 <button id="compassBtn" onclick="resetMapBearing()" class="hidden bg-white/95 backdrop-blur-md p-3 rounded-full shadow-xl border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center text-rose-500" title="北を上にする">
 <i data-lucide="compass" id="compassIcon" class="w-5 h-5 transition-transform duration-200"></i>
 </button>
-<button onclick="locateUser()" class="bg-white/95 backdrop-blur-md p-3 rounded-full shadow-xl border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center text-blue-600" title="現在地を表示してピンを刺す">
+<button onclick="locateUser()" class="bg-white/95 backdrop-blur-md p-3 rounded-full shadow-xl border border-slate-200 hover:bg-slate-50 transition active:scale-95 flex items-center justify-center text-blue-600" title="現在地を表示">
 <i data-lucide="locate-fixed" class="w-5 h-5"></i>
 </button>
 </div>
 </div>
 </main>
 
-<!-- 統計＆リストモーダル -->
+<!-- Chart Modal -->
 <div id="chartModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
 <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 relative my-auto max-h-[90vh] flex flex-col">
-<button onclick="closeChartModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 z-10">
-<i data-lucide="x" class="w-5 h-5"></i>
-</button>
-
-<h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
-<i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-500"></i>
-<span>統計・思い出一覧</span>
-</h3>
+<button onclick="closeChartModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
+<h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-500"></i><span>統計・思い出一覧</span></h3>
 <p class="text-xs text-slate-500 mb-4">県別のピン数と、都道府県ごとのスポットリスト</p>
-
 <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl mb-4 text-xs font-semibold shrink-0">
 <button id="modalTabStats" onclick="switchModalTab('stats')" class="flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition">統計情報</button>
 <button id="modalTabList" onclick="switchModalTab('list')" class="flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition">場所の一覧</button>
 </div>
-
 <div class="flex-1 overflow-y-auto pr-1">
 <div id="viewStats" class="space-y-6">
-<div>
-<h4 class="font-bold text-slate-700 border-b border-slate-200 pb-1 mb-2">都道府県ごとの制覇数</h4>
-<div id="statsPrefList" class="text-xs px-1 space-y-1"></div>
+<div><h4 class="font-bold text-slate-700 border-b border-slate-200 pb-1 mb-2">都道府県ごとの制覇数</h4><div id="statsPrefList" class="text-xs px-1 space-y-1"></div></div>
+<div><h4 class="font-bold text-slate-700 border-b border-slate-200 pb-1 mb-2">記録者ごとのピン数</h4><div id="statsAuthorList" class="text-xs px-1 space-y-1"></div></div>
 </div>
-<div>
-<h4 class="font-bold text-slate-700 border-b border-slate-200 pb-1 mb-2">記録者ごとのピン数</h4>
-<div id="statsAuthorList" class="text-xs px-1 space-y-1"></div>
+<div id="viewList" class="hidden space-y-2 pb-2"><div id="spotListContainer"></div></div>
 </div>
-</div>
-
-<div id="viewList" class="hidden space-y-2 pb-2">
-<div id="spotListContainer"></div>
-</div>
-</div>
-
-<div class="mt-4 text-right shrink-0 pt-2 border-t border-slate-100">
-<button onclick="closeChartModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-lg font-medium transition">
-閉じる
-</button>
-</div>
+<div class="mt-4 text-right shrink-0 pt-2 border-t border-slate-100"><button onclick="closeChartModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-lg font-medium transition">閉じる</button></div>
 </div>
 </div>
 
 <!-- Add/Edit Modal -->
 <div id="spotModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
 <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto my-auto">
-<button onclick="closeAddModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
-<i data-lucide="x" class="w-5 h-5"></i>
-</button>
-<h3 id="modalTitle" class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-<i data-lucide="map-pin" class="w-5 h-5 text-rose-500"></i>
-<span>思い出のスポットを保存</span>
-</h3>
+<button onclick="closeAddModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+<h3 id="modalTitle" class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="map-pin" class="w-5 h-5 text-rose-500"></i><span>思い出のスポットを保存</span></h3>
 
 <form id="spotForm" onsubmit="saveSpot(event)" class="space-y-4">
-<input type="hidden" id="spotId">
-<input type="hidden" id="spotLat">
-<input type="hidden" id="spotLng">
+<input type="hidden" id="spotId"><input type="hidden" id="spotLat"><input type="hidden" id="spotLng">
 
 <div>
 <label class="block text-xs font-bold text-slate-600 mb-1">記録者 <span class="text-rose-500">*</span></label>
 <select id="spotAuthor" required class="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:outline-none">
-<option value="あつき">あつき</option>
-<option value="しゃけち">しゃけち</option>
+<option value="あつき">あつき</option><option value="しゃけち">しゃけち</option>
 </select>
 </div>
-
 <div>
 <label class="block text-xs font-bold text-slate-600 mb-1">スポット名 / 店舗名 <span class="text-rose-500">*</span></label>
 <input type="text" id="spotName" required placeholder="例: 海鮮丼の○〇" class="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:outline-none">
 </div>
-
 <div class="grid grid-cols-2 gap-3">
 <div>
 <label class="block text-xs font-bold text-slate-600 mb-1">都道府県 <span class="text-rose-500">*</span></label>
-<select id="spotPref" required class="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:outline-none">
-</select>
+<select id="spotPref" required class="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:outline-none"></select>
 </div>
 <div>
 <label class="block text-xs font-bold text-slate-600 mb-1">ジャンル <span class="text-rose-500">*</span></label>
 <select id="spotGenre" required onchange="handleGenreChange()" class="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:outline-none">
-<option value="gourmet">ご飯 (赤)</option>
-<option value="sightseeing">遊び (青)</option>
-<option value="souvenir">フォト (黄)</option>
-<option value="want">行きたい！ (灰)</option>
-<option value="today">今日の俺 (緑)</option>
-<option value="other">その他 (紫)</option>
+<option value="gourmet">ご飯 (赤)</option><option value="sightseeing">遊び (青)</option><option value="souvenir">フォト (黄)</option>
+<option value="want">行きたい！ (灰)</option><option value="today">今日の俺 (緑)</option><option value="other">その他 (紫)</option>
 </select>
 </div>
 </div>
-
 <div class="grid grid-cols-2 gap-3">
 <div>
 <label id="ratingLabel" class="block text-xs font-bold text-slate-600 mb-1">満足度 (★1〜5)</label>
 <select id="spotRating" onchange="updatePhotoSlotVisibility()" class="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-rose-400 focus:outline-none">
-<option value="5">★★★★★ (殿堂)</option>
-<option value="4">★★★★☆ (大満足)</option>
-<option value="3">★★★☆☆ (満足)</option>
-<option value="2">★★☆☆☆ (いいね)</option>
-<option value="1">★☆☆☆☆ (OK)</option>
+<option value="5">★★★★★ (殿堂)</option><option value="4">★★★★☆ (大満足)</option><option value="3">★★★☆☆ (満足)</option><option value="2">★★☆☆☆ (いいね)</option><option value="1">★☆☆☆☆ (OK)</option>
 </select>
 </div>
 <div>
@@ -406,45 +340,24 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 </div>
 
 <div class="space-y-2">
-<div class="flex items-center justify-between">
-<label class="block text-xs font-bold text-slate-600">思い出写真</label>
-<span id="photoLimitNotice" class="text-[10px] text-amber-600 font-medium">保存後、評価に応じて枠が増えます</span>
-</div>
-
+<div class="flex items-center justify-between"><label class="block text-xs font-bold text-slate-600">思い出写真</label><span id="photoLimitNotice" class="text-[10px] text-amber-600 font-medium">保存後、評価に応じて枠が増えます</span></div>
 <input type="file" id="photoInput1" accept="image/*" onchange="handleImageSlotUpload(event, 0)" class="hidden">
 <div onclick="document.getElementById('photoInput1').click()" class="border-2 border-dashed border-slate-200 hover:border-rose-400 rounded-xl p-2.5 text-center cursor-pointer transition bg-slate-50 flex items-center justify-between gap-2">
-<div class="flex items-center gap-2">
-<i data-lucide="image" class="w-4 h-4 text-slate-400 shrink-0"></i>
-<span class="text-xs font-medium text-slate-600" id="photoLabel1">1枚目の写真を追加</span>
+<div class="flex items-center gap-2"><i data-lucide="image" class="w-4 h-4 text-slate-400 shrink-0"></i><span class="text-xs font-medium text-slate-600" id="photoLabel1">1枚目の写真を追加</span></div>
+<div id="photoPreviewBox1" class="hidden"><img id="photoImg1" class="h-10 w-10 object-cover rounded-lg border border-slate-200"></div>
 </div>
-<div id="photoPreviewBox1" class="hidden">
-<img id="photoImg1" class="h-10 w-10 object-cover rounded-lg border border-slate-200">
-</div>
-</div>
-
 <div id="photoSlot2" class="hidden">
 <input type="file" id="photoInput2" accept="image/*" onchange="handleImageSlotUpload(event, 1)" class="hidden">
 <div onclick="document.getElementById('photoInput2').click()" class="border-2 border-dashed border-slate-200 hover:border-rose-400 rounded-xl p-2.5 text-center cursor-pointer transition bg-slate-50 flex items-center justify-between gap-2">
-<div class="flex items-center gap-2">
-<i data-lucide="image-plus" class="w-4 h-4 text-indigo-400 shrink-0"></i>
-<span class="text-xs font-medium text-slate-600" id="photoLabel2">2枚目の写真を追加</span>
-</div>
-<div id="photoPreviewBox2" class="hidden">
-<img id="photoImg2" class="h-10 w-10 object-cover rounded-lg border border-slate-200">
+<div class="flex items-center gap-2"><i data-lucide="image-plus" class="w-4 h-4 text-indigo-400 shrink-0"></i><span class="text-xs font-medium text-slate-600" id="photoLabel2">2枚目の写真を追加</span></div>
+<div id="photoPreviewBox2" class="hidden"><img id="photoImg2" class="h-10 w-10 object-cover rounded-lg border border-slate-200"></div>
 </div>
 </div>
-</div>
-
 <div id="photoSlot3" class="hidden">
 <input type="file" id="photoInput3" accept="image/*" onchange="handleImageSlotUpload(event, 2)" class="hidden">
 <div onclick="document.getElementById('photoInput3').click()" class="border-2 border-dashed border-slate-200 hover:border-rose-400 rounded-xl p-2.5 text-center cursor-pointer transition bg-slate-50 flex items-center justify-between gap-2">
-<div class="flex items-center gap-2">
-<i data-lucide="image-plus" class="w-4 h-4 text-amber-400 shrink-0"></i>
-<span class="text-xs font-medium text-slate-600" id="photoLabel3">3枚目の写真を追加</span>
-</div>
-<div id="photoPreviewBox3" class="hidden">
-<img id="photoImg3" class="h-10 w-10 object-cover rounded-lg border border-slate-200">
-</div>
+<div class="flex items-center gap-2"><i data-lucide="image-plus" class="w-4 h-4 text-amber-400 shrink-0"></i><span class="text-xs font-medium text-slate-600" id="photoLabel3">3枚目の写真を追加</span></div>
+<div id="photoPreviewBox3" class="hidden"><img id="photoImg3" class="h-10 w-10 object-cover rounded-lg border border-slate-200"></div>
 </div>
 </div>
 </div>
@@ -465,9 +378,7 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 <!-- Detail View Modal -->
 <div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
 <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-4 sm:p-6 relative max-h-[92vh] overflow-y-auto my-auto">
-<button onclick="closeDetailModal()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 p-1.5 z-30 bg-white/90 shadow-sm border border-slate-100 rounded-full transition">
-<i data-lucide="x" class="w-5 h-5"></i>
-</button>
+<button onclick="closeDetailModal()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 p-1.5 z-30 bg-white/90 shadow-sm border border-slate-100 rounded-full transition"><i data-lucide="x" class="w-5 h-5"></i></button>
 <div id="detailContent"></div>
 </div>
 </div>
@@ -475,9 +386,7 @@ box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 <!-- Image Fullscreen Modal -->
 <div id="imageModal" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[100] hidden flex items-center justify-center p-2 cursor-pointer" onclick="closeImageModal()">
 <img id="fullSizeImage" src="" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onclick="event.stopPropagation()">
-<button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-300 hover:text-white p-2 bg-slate-800/50 rounded-full transition">
-<i data-lucide="x" class="w-6 h-6"></i>
-</button>
+<button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-300 hover:text-white p-2 bg-slate-800/50 rounded-full transition"><i data-lucide="x" class="w-6 h-6"></i></button>
 </div>
 
 <script>
@@ -486,10 +395,7 @@ const toast = document.getElementById('toast');
 document.getElementById('toastMsg').textContent = msg;
 toast.classList.remove('opacity-0', 'pointer-events-none');
 toast.classList.add('opacity-100');
-setTimeout(() => {
-toast.classList.remove('opacity-100');
-toast.classList.add('opacity-0', 'pointer-events-none');
-}, 4000);
+setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.add('opacity-0', 'pointer-events-none'); }, 4000);
 }
 
 window.openImageModal = function(src) {
@@ -533,10 +439,7 @@ if (spot.date) {
 const parts = spot.date.split('-').map(Number);
 if (parts.length === 3) {
 const expireDate = new Date(parts[0], parts[1] - 1, parts[2] + 2, 0, 0, 0, 0);
-if (now >= expireDate) {
-deleteDoc(doc(spotsCollection, spot.id)).catch(e => console.error(e));
-return;
-}
+if (now >= expireDate) { deleteDoc(doc(spotsCollection, spot.id)).catch(e => console.error(e)); return; }
 }
 }
 }
@@ -555,94 +458,47 @@ if (typeof window.updateProgress === 'function') window.updateProgress();
 if (typeof window.updateAnalytics === 'function') window.updateAnalytics();
 
 const statusEl = document.getElementById('statSyncStatus');
-if (statusEl) {
-statusEl.textContent = "完全同期済";
-statusEl.className = "font-bold text-blue-600";
-}
+if (statusEl) { statusEl.textContent = "完全同期済"; statusEl.className = "font-bold text-blue-600"; }
 }, (err) => {
 console.error("Cloud sync error:", err);
 const statusEl = document.getElementById('statSyncStatus');
-if (statusEl) {
-statusEl.textContent = "未接続 (ローカル)";
-statusEl.className = "font-bold text-rose-600";
-}
+if (statusEl) { statusEl.textContent = "未接続 (ローカル)"; statusEl.className = "font-bold text-rose-600"; }
 });
 
-window.saveSpotToCloud = async function(spot) {
-try {
-await setDoc(doc(spotsCollection, spot.id), spot);
-} catch (e) {
-console.error("Save error:", e);
-}
-};
+window.saveSpotToCloud = async function(spot) { try { await setDoc(doc(spotsCollection, spot.id), spot); } catch (e) { console.error(e); } };
+window.deleteSpotFromCloud = async function(id) { try { await deleteDoc(doc(spotsCollection, id)); } catch (e) { console.error(e); } };
 
-window.deleteSpotFromCloud = async function(id) {
-try {
-await deleteDoc(doc(spotsCollection, id));
-} catch (e) {
-console.error("Delete error:", e);
-}
-};
-
-} catch (e) {
-console.error("Firebase init error:", e);
-}
+} catch (e) { console.error("Firebase init error:", e); }
 </script>
 
 <script>
-const JAPAN_BOUNDS = [
-[20.0, 122.0],
-[46.0, 153.0]
-];
+const JAPAN_BOUNDS = [[20.0, 122.0], [46.0, 153.0]];
 
 const PREFECTURES = [
-{ name: "北海道", lat: 43.0642, lng: 141.3468, zoom: 7, areas: [{ name: "札幌市", lat: 43.0618, lng: 141.3545, zoom: 11 }] },
-{ name: "青森県", lat: 40.8244, lng: 140.7400, zoom: 9, areas: [] },
-{ name: "岩手県", lat: 39.7036, lng: 141.1527, zoom: 9, areas: [] },
-{ name: "宮城県", lat: 38.2688, lng: 140.8719, zoom: 9, areas: [] },
-{ name: "秋田県", lat: 39.7186, lng: 140.1024, zoom: 9, areas: [] },
-{ name: "山形県", lat: 38.2404, lng: 140.3633, zoom: 9, areas: [] },
-{ name: "福島県", lat: 37.7500, lng: 140.4678, zoom: 9, areas: [] },
-{ name: "茨城県", lat: 36.3418, lng: 140.4468, zoom: 9, areas: [] },
-{ name: "栃木県", lat: 36.5658, lng: 139.8836, zoom: 9, areas: [] },
-{ name: "群馬県", lat: 36.3907, lng: 139.0604, zoom: 9, areas: [] },
-{ name: "埼玉県", lat: 35.8569, lng: 139.6489, zoom: 10, areas: [] },
-{ name: "千葉県", lat: 35.6047, lng: 140.1233, zoom: 9, areas: [] },
-{ name: "東京都", lat: 35.6895, lng: 139.6917, zoom: 10, areas: [{ name: "新宿", lat: 35.6812, lng: 139.7671, zoom: 13 }] },
-{ name: "神奈川県", lat: 35.4478, lng: 139.6425, zoom: 10, areas: [{ name: "横浜", lat: 35.4542, lng: 139.6314, zoom: 13 }] },
-{ name: "新潟県", lat: 37.9022, lng: 139.0236, zoom: 9, areas: [] },
-{ name: "富山県", lat: 36.6959, lng: 137.2137, zoom: 9, areas: [] },
-{ name: "石川県", lat: 36.5944, lng: 136.6256, zoom: 9, areas: [] },
-{ name: "福井県", lat: 36.0652, lng: 136.2216, zoom: 9, areas: [] },
-{ name: "山梨県", lat: 35.6642, lng: 138.5684, zoom: 9, areas: [] },
-{ name: "長野県", lat: 36.6513, lng: 138.1810, zoom: 9, areas: [] },
-{ name: "岐阜県", lat: 35.3912, lng: 136.7223, zoom: 9, areas: [] },
-{ name: "静岡県", lat: 34.9769, lng: 138.3831, zoom: 9, areas: [] },
-{ name: "愛知県", lat: 35.1802, lng: 136.9066, zoom: 9, areas: [] },
-{ name: "三重県", lat: 34.7303, lng: 136.5086, zoom: 9, areas: [] },
-{ name: "滋賀県", lat: 35.0045, lng: 135.8686, zoom: 9, areas: [] },
-{ name: "京都府", lat: 35.0211, lng: 135.7556, zoom: 10, areas: [] },
-{ name: "大阪府", lat: 34.6937, lng: 135.5022, zoom: 10, areas: [] },
-{ name: "兵庫県", lat: 34.6913, lng: 135.1830, zoom: 9, areas: [] },
-{ name: "奈良県", lat: 34.6851, lng: 135.8328, zoom: 9, areas: [] },
-{ name: "和歌山県", lat: 34.2260, lng: 135.1675, zoom: 9, areas: [] },
-{ name: "鳥取県", lat: 35.5011, lng: 134.2351, zoom: 9, areas: [] },
-{ name: "島根県", lat: 35.4723, lng: 133.0505, zoom: 9, areas: [] },
-{ name: "岡山県", lat: 34.6617, lng: 133.9350, zoom: 9, areas: [] },
-{ name: "広島県", lat: 34.3853, lng: 132.4553, zoom: 9, areas: [] },
-{ name: "山口県", lat: 34.1858, lng: 131.4714, zoom: 9, areas: [] },
-{ name: "徳島県", lat: 34.0657, lng: 134.5593, zoom: 9, areas: [] },
-{ name: "香川県", lat: 34.3401, lng: 134.0434, zoom: 10, areas: [] },
-{ name: "愛媛県", lat: 33.8416, lng: 132.7657, zoom: 9, areas: [] },
-{ name: "高知県", lat: 33.5597, lng: 133.5311, zoom: 9, areas: [] },
-{ name: "福岡県", lat: 33.6064, lng: 130.4183, zoom: 9, areas: [] },
-{ name: "佐賀県", lat: 33.2635, lng: 130.3009, zoom: 10, areas: [] },
-{ name: "長崎県", lat: 32.7503, lng: 129.8777, zoom: 9, areas: [] },
-{ name: "熊本県", lat: 32.7898, lng: 130.7417, zoom: 9, areas: [] },
-{ name: "大分県", lat: 33.2382, lng: 131.6126, zoom: 9, areas: [] },
-{ name: "宮崎県", lat: 31.9077, lng: 131.4202, zoom: 9, areas: [] },
-{ name: "鹿児島県", lat: 31.5966, lng: 130.5571, zoom: 9, areas: [] },
-{ name: "沖縄県", lat: 26.2124, lng: 127.6809, zoom: 9, areas: [] }
+{ name: "北海道", lat: 43.0642, lng: 141.3468, zoom: 7 }, { name: "青森県", lat: 40.8244, lng: 140.7400, zoom: 9 },
+{ name: "岩手県", lat: 39.7036, lng: 141.1527, zoom: 9 }, { name: "宮城県", lat: 38.2688, lng: 140.8719, zoom: 9 },
+{ name: "秋田県", lat: 39.7186, lng: 140.1024, zoom: 9 }, { name: "山形県", lat: 38.2404, lng: 140.3633, zoom: 9 },
+{ name: "福島県", lat: 37.7500, lng: 140.4678, zoom: 9 }, { name: "茨城県", lat: 36.3418, lng: 140.4468, zoom: 9 },
+{ name: "栃木県", lat: 36.5658, lng: 139.8836, zoom: 9 }, { name: "群馬県", lat: 36.3907, lng: 139.0604, zoom: 9 },
+{ name: "埼玉県", lat: 35.8569, lng: 139.6489, zoom: 10 }, { name: "千葉県", lat: 35.6047, lng: 140.1233, zoom: 9 },
+{ name: "東京都", lat: 35.6895, lng: 139.6917, zoom: 10 }, { name: "神奈川県", lat: 35.4478, lng: 139.6425, zoom: 10 },
+{ name: "新潟県", lat: 37.9022, lng: 139.0236, zoom: 9 }, { name: "富山県", lat: 36.6959, lng: 137.2137, zoom: 9 },
+{ name: "石川県", lat: 36.5944, lng: 136.6256, zoom: 9 }, { name: "福井県", lat: 36.0652, lng: 136.2216, zoom: 9 },
+{ name: "山梨県", lat: 35.6642, lng: 138.5684, zoom: 9 }, { name: "長野県", lat: 36.6513, lng: 138.1810, zoom: 9 },
+{ name: "岐阜県", lat: 35.3912, lng: 136.7223, zoom: 9 }, { name: "静岡県", lat: 34.9769, lng: 138.3831, zoom: 9 },
+{ name: "愛知県", lat: 35.1802, lng: 136.9066, zoom: 9 }, { name: "三重県", lat: 34.7303, lng: 136.5086, zoom: 9 },
+{ name: "滋賀県", lat: 35.0045, lng: 135.8686, zoom: 9 }, { name: "京都府", lat: 35.0211, lng: 135.7556, zoom: 10 },
+{ name: "大阪府", lat: 34.6937, lng: 135.5022, zoom: 10 }, { name: "兵庫県", lat: 34.6913, lng: 135.1830, zoom: 9 },
+{ name: "奈良県", lat: 34.6851, lng: 135.8328, zoom: 9 }, { name: "和歌山県", lat: 34.2260, lng: 135.1675, zoom: 9 },
+{ name: "鳥取県", lat: 35.5011, lng: 134.2351, zoom: 9 }, { name: "島根県", lat: 35.4723, lng: 133.0505, zoom: 9 },
+{ name: "岡山県", lat: 34.6617, lng: 133.9350, zoom: 9 }, { name: "広島県", lat: 34.3853, lng: 132.4553, zoom: 9 },
+{ name: "山口県", lat: 34.1858, lng: 131.4714, zoom: 9 }, { name: "徳島県", lat: 34.0657, lng: 134.5593, zoom: 9 },
+{ name: "香川県", lat: 34.3401, lng: 134.0434, zoom: 10 }, { name: "愛媛県", lat: 33.8416, lng: 132.7657, zoom: 9 },
+{ name: "高知県", lat: 33.5597, lng: 133.5311, zoom: 9 }, { name: "福岡県", lat: 33.6064, lng: 130.4183, zoom: 9 },
+{ name: "佐賀県", lat: 33.2635, lng: 130.3009, zoom: 10 }, { name: "長崎県", lat: 32.7503, lng: 129.8777, zoom: 9 },
+{ name: "熊本県", lat: 32.7898, lng: 130.7417, zoom: 9 }, { name: "大分県", lat: 33.2382, lng: 131.6126, zoom: 9 },
+{ name: "宮崎県", lat: 31.9077, lng: 131.4202, zoom: 9 }, { name: "鹿児島県", lat: 31.5966, lng: 130.5571, zoom: 9 },
+{ name: "沖縄県", lat: 26.2124, lng: 127.6809, zoom: 9 }
 ];
 
 const GENRE_CONFIG = {
@@ -654,15 +510,11 @@ today: { label: "今日の俺", color: "#10b981", icon: "user-check" },
 other: { label: "その他", color: "#a855f7", icon: "bed-double" }
 };
 
-const RATING_LABELS = {
-5: "★★★★★ 殿堂",
-4: "★★★★☆ 大満足",
-3: "★★★☆☆ 満足",
-2: "★★☆☆☆ いいね",
-1: "★☆☆☆☆ OK"
-};
+const RATING_LABELS = { 5: "★★★★★ 殿堂", 4: "★★★★☆ 大満足", 3: "★★★☆☆ 満足", 2: "★★☆☆☆ いいね", 1: "★☆☆☆☆ OK" };
 
 let map;
+let baseTileLayer = null;
+let currentMapStyle = 'default';
 let markers = [];
 window.spots = [];
 window.currentSearchLayerGroup = null;
@@ -679,12 +531,7 @@ window.updateProgress();
 window.updateAnalytics();
 
 document.getElementById('spotDate').value = new Date().toISOString().split('T')[0];
-
-document.addEventListener('click', function(e) {
-if (!e.target.closest('.relative')) {
-document.getElementById('searchResults').classList.add('hidden');
-}
-});
+document.addEventListener('click', function(e) { if (!e.target.closest('.relative')) document.getElementById('searchResults').classList.add('hidden'); });
 };
 
 function initPrefecturesDropdown() {
@@ -698,31 +545,19 @@ const opt2 = document.createElement('option'); opt2.value = p.name; opt2.textCon
 
 function initMap() {
 map = L.map('map', {
-zoomControl: false,
-minZoom: 5,
-maxZoom: 18,
-maxBounds: JAPAN_BOUNDS,
-maxBoundsViscosity: 1.0,
-rotate: true,
-touchRotate: true,
-rotateControl: false,
-bearing: 0,
-rotateThreshold: 50,
-rotateSensitivity: 0.15,
-zoomAnimation: true,
-fadeAnimation: true,
-markerZoomAnimation: true,
-inertia: true,
-inertiaDeceleration: 2500,
-easeLinearity: 0.2
+zoomControl: false, minZoom: 5, maxZoom: 18, maxBounds: JAPAN_BOUNDS, maxBoundsViscosity: 1.0,
+rotate: true, touchRotate: true, rotateControl: false, bearing: 0,
+rotateThreshold: 50, rotateSensitivity: 0.15, zoomAnimation: true, fadeAnimation: true, markerZoomAnimation: true,
+inertia: true, inertiaDeceleration: 2500, easeLinearity: 0.2
 }).setView([37.5, 137.5], 5);
 
 window.currentSearchLayerGroup = L.layerGroup().addTo(map);
-
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-attribution: '&copy; CARTO', subdomains: 'abcd', maxZoom: 18, minZoom: 5, keepBuffer: 6, crossOrigin: true
+// ★ デフォルトレイヤー（国土地理院 淡色地図）API KEY REQUIREDを回避するクリーンなマップ
+baseTileLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+maxZoom: 18, minZoom: 5, keepBuffer: 6
 }).addTo(map);
 
 const outerMaskPolygon = [
@@ -735,32 +570,41 @@ map.on('rotate', () => {
 const bearing = map.getBearing ? map.getBearing() : 0;
 const compassBtn = document.getElementById('compassBtn');
 const compassIcon = document.getElementById('compassIcon');
-if (Math.abs(bearing) > 2) {
-compassBtn.classList.remove('hidden');
-if (compassIcon) compassIcon.style.transform = `rotate(${-bearing}deg)`;
-} else {
-compassBtn.classList.add('hidden');
-}
+if (Math.abs(bearing) > 2) { compassBtn.classList.remove('hidden'); if (compassIcon) compassIcon.style.transform = `rotate(${-bearing}deg)`; }
+else { compassBtn.classList.add('hidden'); }
 });
 
 map.on('click', function(e) {
 const nearestPref = findNearestPrefecture(e.latlng.lat, e.latlng.lng);
-if (map.getZoom() < 8) {
-zoomToPref(nearestPref);
+if (map.getZoom() < 8) zoomToPref(nearestPref);
+else { clearSearch(); openAddModal(e.latlng.lat, e.latlng.lng, nearestPref); }
+});
+
+map.on('zoomend', () => { window.renderMarkers(); updateMapHint(); });
+window.renderMarkers();
+}
+
+// ★ 地図スタイルの切り替え（国土地理院 ↔ OSM詳細地図）
+window.toggleMapStyle = function() {
+if (currentMapStyle === 'default') {
+map.removeLayer(baseTileLayer);
+baseTileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OSM</a>',
+maxZoom: 18, minZoom: 5, keepBuffer: 6
+}).addTo(map);
+currentMapStyle = 'detail';
+showToast("詳細な地図（建物名あり）に切り替えました");
 } else {
-clearSearch();
-openAddModal(e.latlng.lat, e.latlng.lng, nearestPref);
+map.removeLayer(baseTileLayer);
+baseTileLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+maxZoom: 18, minZoom: 5, keepBuffer: 6
+}).addTo(map);
+currentMapStyle = 'default';
+showToast("シンプルな地図に切り替えました");
 }
-});
-
-// ★ ズーム完了時（指を離したとき）に再計算して固定サイズのピンを再描画（バグ回避）
-map.on('zoomend', () => {
 window.renderMarkers();
-updateMapHint();
-});
-
-window.renderMarkers();
-}
+};
 
 window.resetMapBearing = function() {
 if (map && map.setBearing) { map.setBearing(0); document.getElementById('compassBtn').classList.add('hidden'); showToast("地図を北向きに戻しました"); }
@@ -773,7 +617,6 @@ const handleSuccess = (position) => {
 const lat = position.coords.latitude; const lng = position.coords.longitude;
 const prefName = findNearestPrefecture(lat, lng);
 if (currentLocationMarker) map.removeLayer(currentLocationMarker);
-
 const locIcon = L.divIcon({ html: `<div class="scaled-pin-container current-loc-marker" style="width:20px; height:20px;"><div class="current-loc-wave"></div><div class="current-loc-dot"></div></div>`, className: '', iconSize: [20, 20], iconAnchor: [10, 10] });
 currentLocationMarker = L.marker([lat, lng], { icon: locIcon, zIndexOffset: 2000 }).addTo(map);
 currentLocationMarker.bindPopup(`<div class="p-1 text-center font-sans"><div class="font-bold text-xs text-blue-600 mb-0.5">📍 現在地</div><div class="text-[11px] text-slate-500 mb-2">${prefName}周辺</div><button onclick="openAddModal(${lat}, ${lng}, '${prefName}', '')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm">ここに追加</button></div>`, { closeButton: false }).openPopup();
@@ -789,74 +632,45 @@ navigator.geolocation.getCurrentPosition(
 setTimeout(() => { if (!isDone) { isDone = true; reject({ code: 3 }); } }, options.timeout + 500);
 });
 (async () => {
-try {
-const pos = await getSafely({ enableHighAccuracy: true, timeout: 7000, maximumAge: 0 });
-handleSuccess(pos);
-} catch (err1) {
-if (err1.code === 1) { alert("【位置情報の取得がブロックされています】\n\nSafariの位置情報を許可してください。\n\n1. iPhoneの「設定」アプリを開く\n2. 「プライバシーとセキュリティ」を選択\n3. 「位置情報サービス」を選択\n4. 「SafariのWebサイト」を『このAppの使用中』にしてください。"); return; }
+try { const pos = await getSafely({ enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }); handleSuccess(pos); }
+catch (err1) {
+if (err1.code === 1) { alert("【位置情報の取得がブロックされています】\nSafariの位置情報を許可してください。"); return; }
 showToast("GPS電波が弱いため、標準精度で再試行します...");
-try {
-const pos2 = await getSafely({ enableHighAccuracy: false, timeout: 7000, maximumAge: 60000 });
-handleSuccess(pos2);
-} catch (err2) { alert("位置情報を取得できませんでした。\n地下や屋内などで電波が届いていない可能性があります。"); }
+try { const pos2 = await getSafely({ enableHighAccuracy: false, timeout: 7000, maximumAge: 60000 }); handleSuccess(pos2); }
+catch (err2) { alert("位置情報を取得できませんでした。"); }
 }
 })();
 };
 
-function updateMapHint() {
-document.getElementById('mapHintText').textContent = map.getZoom() < 8 ? "都道府県エリアをタップすると拡大します" : "2本指で回転・タップでピン追加";
-}
-
+function updateMapHint() { document.getElementById('mapHintText').textContent = map.getZoom() < 8 ? "都道府県エリアをタップすると拡大します" : "2本指で回転・タップでピン追加"; }
 function findNearestPrefecture(lat, lng) {
 let closest = PREFECTURES[0].name; let minDistance = Infinity;
 PREFECTURES.forEach(p => { const dist = Math.hypot(p.lat - lat, p.lng - lng); if (dist < minDistance) { minDistance = dist; closest = p.name; } });
 return closest;
 }
+function resetMapView() { clearSearch(); if (map.setBearing) map.setBearing(0); document.getElementById('compassBtn').classList.add('hidden'); map.flyTo([37.5, 137.5], 5, { duration: 1.2 }); document.getElementById('prefSelect').value = ""; }
+function zoomToPref(prefName) { clearSearch(); const pref = PREFECTURES.find(p => p.name === prefName); if (pref) { map.flyTo([pref.lat, pref.lng], pref.zoom, { duration: 1.2 }); document.getElementById('prefSelect').value = prefName; } }
 
-function resetMapView() {
-clearSearch();
-if (map.setBearing) map.setBearing(0); document.getElementById('compassBtn').classList.add('hidden');
-map.flyTo([37.5, 137.5], 5, { duration: 1.2 });
-document.getElementById('prefSelect').value = ""; document.getElementById('areaSelect').innerHTML = '<option value="">エリア...</option>'; document.getElementById('areaSelect').disabled = true;
-}
+window.handleSearchInputChange = function() { document.getElementById('clearSearchBtn').classList.toggle('hidden', document.getElementById('searchInput').value.trim().length === 0); }
+window.clearSearch = function() { document.getElementById('searchInput').value = ''; document.getElementById('searchResults').classList.add('hidden'); document.getElementById('clearSearchBtn').classList.add('hidden'); if (window.currentSearchLayerGroup) window.currentSearchLayerGroup.clearLayers(); }
 
-function zoomToPref(prefName) {
-clearSearch();
-const pref = PREFECTURES.find(p => p.name === prefName);
-if (pref) { map.flyTo([pref.lat, pref.lng], pref.zoom, { duration: 1.2 }); document.getElementById('prefSelect').value = prefName; document.getElementById('areaSelect').disabled = true; }
-}
-
-window.handleSearchInputChange = function() {
-document.getElementById('clearSearchBtn').classList.toggle('hidden', document.getElementById('searchInput').value.trim().length === 0);
-}
-
-window.clearSearch = function() {
-document.getElementById('searchInput').value = '';
-document.getElementById('searchResults').classList.add('hidden');
-document.getElementById('clearSearchBtn').classList.add('hidden');
-if (window.currentSearchLayerGroup) window.currentSearchLayerGroup.clearLayers();
-}
-
+// ★ 検索機能の大幅強化 (Nominatim APIによる高精度検索)
 async function searchLocation() {
 const queryRaw = document.getElementById('searchInput').value.trim();
 const resultsDiv = document.getElementById('searchResults');
 const clearBtn = document.getElementById('clearSearchBtn');
 
 if (!queryRaw) { clearSearch(); return; }
-
 clearBtn.classList.remove('hidden');
-resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center"><span class="animate-spin text-rose-500">⌛</span> 画面内のスポットを検索中...</div>`;
+resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center"><span class="animate-spin text-rose-500 inline-block mr-1">⌛</span> 高精度検索中...</div>`;
 resultsDiv.classList.remove('hidden');
 
 if (window.currentSearchLayerGroup) window.currentSearchLayerGroup.clearLayers();
-
 const keyword = queryRaw.replace(/[\\"']/g, '');
-const bounds = map.getBounds();
-const zoom = map.getZoom();
-
 let resultsList = [];
 const seenKeys = new Set();
 
+// 1. ローカル（登録済みスポット）の検索
 (window.spots || []).forEach(spot => {
 if ([spot.name, spot.pref, spot.comment].some(t => (t||'').toLowerCase().includes(keyword.toLowerCase()))) {
 const key = `${spot.lat.toFixed(4)},${spot.lng.toFixed(4)}`;
@@ -867,38 +681,47 @@ resultsList.push({ isLocal: true, name: spot.name, subText: `【登録済】${sp
 }
 });
 
-if (zoom >= 8) {
-const bboxOP = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-const opQuery = `[out:json][timeout:15];(nwr["name"~"${keyword}",i](${bboxOP}););out center 40;`;
+// 2. Nominatim API を使用した強力なGeocoding検索
 try {
-const opRes = await fetch(`https://overpass-api.de/api/interpreter`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(opQuery)}` });
-const opData = await opRes.json();
-opData.elements.forEach(el => {
-const tags = el.tags || {};
-const lat = el.lat || el.center.lat;
-const lon = el.lon || el.center.lon;
+const bounds = map.getBounds();
+// viewboxを利用して現在の表示領域を優先検索
+const viewbox = `${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}`;
+const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(keyword)}&countrycodes=jp&limit=15&viewbox=${viewbox}&bounded=0&addressdetails=1`;
+const res = await fetch(url, { headers: { 'Accept-Language': 'ja' } });
+const data = await res.json();
+
+data.forEach(item => {
+const lat = parseFloat(item.lat);
+const lon = parseFloat(item.lon);
 const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
-if (!seenKeys.has(key) && tags.name) {
+if (!seenKeys.has(key)) {
 seenKeys.add(key);
-resultsList.push({ isLocal: false, name: tags.name, subText: tags['addr:city'] ? `${tags['addr:city']}` : '現在表示中のエリア', lat: lat, lon: lon, prefName: findNearestPrefecture(lat, lon) });
-}
-});
-} catch(e) { console.warn("Overpass API error:", e); }
+let name = item.name || item.display_name.split(',')[0];
+let subText = "日本";
+if (item.address) {
+const addr = item.address;
+subText = [addr.province, addr.city, addr.town, addr.suburb].filter(Boolean).join(' ');
 } else {
-resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">検索範囲が広すぎます。<br>見つけたい県や市までズームしてから検索してください。</div>`;
-return;
+const parts = item.display_name.split(', ');
+if(parts.length > 1) subText = parts.slice(1, 3).join(', ');
 }
 
+resultsList.push({
+isLocal: false, name: name, subText: subText, lat: lat, lon: lon,
+prefName: findNearestPrefecture(lat, lon)
+});
+}
+});
+} catch(e) { console.warn("Search API error:", e); }
+
 if (resultsList.length === 0) {
-resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">画面内に「${keyword}」は見つかりませんでした。<br>地図を移動させて再度検索してください。</div>`;
+resultsDiv.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">「${keyword}」は見つかりませんでした。<br>別のキーワードで試すか、地図を移動させてください。</div>`;
 return;
 }
 
 resultsDiv.innerHTML = '';
-
-resultsList.slice(0, 20).forEach((item, idx) => {
+resultsList.slice(0, 15).forEach((item, idx) => {
 const listNum = idx + 1;
-
 const iconHtml = `<div class="scaled-pin-container search-pin-container" style="width: 20px; height: 20px;"><span>${listNum}</span></div>`;
 const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [20, 20], iconAnchor: [10, 10] });
 const marker = L.marker([item.lat, item.lon], { icon: customIcon, zIndexOffset: 1500 }).addTo(window.currentSearchLayerGroup);
@@ -907,7 +730,7 @@ marker.bindPopup(`<div class="p-1 text-center font-sans"><div class="font-bold t
 
 const div = document.createElement('div');
 div.className = 'p-3 hover:bg-slate-50 cursor-pointer transition text-xs flex items-center justify-between gap-2';
-const badge = item.isLocal ? `<span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded">登録済</span>` : `<span class="bg-slate-800 text-sky-400 text-[10px] font-bold px-1.5 py-0.5 rounded">${listNum}</span>`;
+const badge = item.isLocal ? `<span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">登録済</span>` : `<span class="bg-slate-800 text-sky-400 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">${listNum}</span>`;
 div.innerHTML = `<div class="flex-1 overflow-hidden"><div class="font-bold text-slate-800 flex items-center gap-1.5 truncate"><span class="truncate">${item.name}</span>${badge}</div><div class="text-[10px] text-slate-400 truncate mt-0.5">${item.subText}</div></div>`;
 
 div.onclick = function() {
@@ -915,19 +738,16 @@ resultsDiv.classList.add('hidden');
 map.flyTo([item.lat, item.lon], 17, { duration: 1.5 });
 setTimeout(() => marker.openPopup(), 1500);
 };
-
 resultsDiv.appendChild(div);
 });
-showToast(`画面内から ${Math.min(resultsList.length, 20)}件 の候補を見つけました！`);
+showToast(`${resultsList.length}件 の候補を見つけました！`);
 }
 
-// ★ ズームレベルに応じてJSでサイズを固定計算して再生成
 window.renderMarkers = function() {
 if (!map) return;
 markers.forEach(m => map.removeLayer(m));
 markers = [];
 
-// スケール計算（5で0.5倍、15で1.0倍）
 const zoom = map.getZoom();
 let scale = 0.5 + ((zoom - 5) / 10) * 0.5;
 if (scale > 1) scale = 1;
@@ -937,7 +757,6 @@ const locationMap = new Map();
 (window.spots || []).forEach(spot => {
 if (currentFilter === 'all' && spot.genre === 'other') return;
 if (currentFilter !== 'all' && spot.genre !== currentFilter) return;
-
 const key = `${spot.lat.toFixed(4)},${spot.lng.toFixed(4)}`;
 if (!locationMap.has(key)) locationMap.set(key, []);
 locationMap.get(key).push(spot);
@@ -950,30 +769,22 @@ const genreInfo = GENRE_CONFIG[primarySpot.genre] || GENRE_CONFIG.gourmet;
 const isToday = primarySpot.genre === 'today';
 const isSpecial = primarySpot.genre === 'want' || primarySpot.genre === 'other';
 
-// ベースサイズにスケールを乗算して固定値化する
 const basePinSizeRaw = isToday ? 26 : (isSpecial ? 16 : 20);
 const iconSizeRaw = isToday ? 14 : (isSpecial ? 9 : 11);
-
 const basePinSize = Math.round(basePinSizeRaw * scale);
 const iconSize = Math.round(iconSizeRaw * scale);
 const anchorSize = Math.round(basePinSize / 2);
-
 const countBadge = spotsAtLoc.length > 1 ? `<div class="pin-badge">${spotsAtLoc.length}</div>` : '';
 
 let innerHtml = isToday ?
-`<div class="today-pin-wrapper" style="width:${basePinSize}px; height:${basePinSize}px;"><div class="today-pulse-ring"></div><div class="today-pulse-ring-2"></div><div class="custom-pin today-pin" style="width:${basePinSize}px; height:${basePinSize}px;"><i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>${countBadge}</div></div>`
-:
+`<div class="today-pin-wrapper" style="width:${basePinSize}px; height:${basePinSize}px;"><div class="today-pulse-ring"></div><div class="today-pulse-ring-2"></div><div class="custom-pin today-pin" style="width:${basePinSize}px; height:${basePinSize}px;"><i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>${countBadge}</div></div>` :
 `<div class="custom-pin" style="background-color: ${genreInfo.color}; width: ${basePinSize}px; height: ${basePinSize}px;"><i data-lucide="${genreInfo.icon}" style="width:${iconSize}px;height:${iconSize}px;"></i>${countBadge}</div>`;
 
 const iconHtml = `<div class="scaled-pin-container" style="width: ${basePinSize}px; height: ${basePinSize}px;">${innerHtml}</div>`;
-
 const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [basePinSize, basePinSize], iconAnchor: [anchorSize, anchorSize] });
 const marker = L.marker([primarySpot.lat, primarySpot.lng], { icon: customIcon, zIndexOffset: isToday ? 1000 : 0 }).addTo(map);
 
-marker.on('click', (e) => {
-L.DomEvent.stopPropagation(e);
-openDetailModalGroup(spotsAtLoc);
-});
+marker.on('click', (e) => { L.DomEvent.stopPropagation(e); openDetailModalGroup(spotsAtLoc); });
 markers.push(marker);
 });
 lucide.createIcons();
@@ -986,10 +797,7 @@ document.getElementById('progressStats').textContent = `${visitedPrefs.size}/47 
 document.getElementById('progressBar').style.width = `${((visitedPrefs.size / 47) * 100).toFixed(1)}%`;
 };
 
-window.updateAnalytics = function() {
-const spots = window.spots || [];
-document.getElementById('statTotalPins').textContent = `${spots.length}個`;
-};
+window.updateAnalytics = function() { document.getElementById('statTotalPins').textContent = `${(window.spots || []).length}個`; };
 
 function openChartModal() { document.getElementById('chartModal').classList.remove('hidden'); switchModalTab('stats'); }
 function closeChartModal() { document.getElementById('chartModal').classList.add('hidden'); }
@@ -999,89 +807,41 @@ function switchModalTab(tab) {
 const btn = document.getElementById(`modalTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
 const view = document.getElementById(`view${t.charAt(0).toUpperCase() + t.slice(1)}`);
 if (t === tab) {
-btn.className = "flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition";
-view.classList.remove('hidden');
-if(tab === 'stats') renderStats();
-else if (tab === 'list') renderSpotList();
+btn.className = "flex-1 py-2 rounded-lg bg-white shadow-sm text-slate-800 transition"; view.classList.remove('hidden');
+if(tab === 'stats') renderStats(); else if (tab === 'list') renderSpotList();
 } else {
-btn.className = "flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition";
-view.classList.add('hidden');
+btn.className = "flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 transition"; view.classList.add('hidden');
 }
 });
 }
 
 window.renderStats = function() {
-const prefContainer = document.getElementById('statsPrefList');
-const authorContainer = document.getElementById('statsAuthorList');
-const prefCounts = {};
-PREFECTURES.forEach(p => prefCounts[p.name] = 0);
-const authorCounts = {};
-
+const prefContainer = document.getElementById('statsPrefList'); const authorContainer = document.getElementById('statsAuthorList');
+const prefCounts = {}; PREFECTURES.forEach(p => prefCounts[p.name] = 0); const authorCounts = {};
 (window.spots || []).forEach(s => {
 if (s.genre === 'want' || s.genre === 'today' || s.genre === 'other') return;
 if (s.pref && prefCounts[s.pref] !== undefined) prefCounts[s.pref]++;
-const author = s.author || '不明';
-authorCounts[author] = (authorCounts[author] || 0) + 1;
+const author = s.author || '不明'; authorCounts[author] = (authorCounts[author] || 0) + 1;
 });
-
-let prefHtml = '';
-PREFECTURES.forEach(p => {
-if (prefCounts[p.name] > 0) prefHtml += `<div class="py-1.5 flex items-center justify-between border-b border-slate-50 last:border-0"><span class="text-slate-700">${p.name}</span><span class="font-bold text-rose-600">${prefCounts[p.name]} 個</span></div>`;
-});
+let prefHtml = ''; PREFECTURES.forEach(p => { if (prefCounts[p.name] > 0) prefHtml += `<div class="py-1.5 flex items-center justify-between border-b border-slate-50 last:border-0"><span class="text-slate-700">${p.name}</span><span class="font-bold text-rose-600">${prefCounts[p.name]} 個</span></div>`; });
 prefContainer.innerHTML = prefHtml || '<div class="text-center py-4 text-slate-400 text-xs">データなし</div>';
-
-let authorHtml = '';
-Object.keys(authorCounts).sort((a,b)=>authorCounts[b]-authorCounts[a]).forEach(a => {
-authorHtml += `<div class="py-1.5 flex items-center justify-between border-b border-slate-50 last:border-0"><span class="text-slate-700">${a}</span><span class="font-bold text-blue-600">${authorCounts[a]} 個</span></div>`;
-});
+let authorHtml = ''; Object.keys(authorCounts).sort((a,b)=>authorCounts[b]-authorCounts[a]).forEach(a => { authorHtml += `<div class="py-1.5 flex items-center justify-between border-b border-slate-50 last:border-0"><span class="text-slate-700">${a}</span><span class="font-bold text-blue-600">${authorCounts[a]} 個</span></div>`; });
 authorContainer.innerHTML = authorHtml || '<div class="text-center py-4 text-slate-400 text-xs">データなし</div>';
 }
 
 function renderSpotList() {
 const container = document.getElementById('spotListContainer');
 let spots = (window.spots || []).filter(s => currentFilter === 'all' ? s.genre !== 'other' : s.genre === currentFilter).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-
-const prefGroups = {};
-PREFECTURES.forEach(p => prefGroups[p.name] = []);
-prefGroups['その他・不明'] = [];
-
-spots.forEach(s => {
-if (s.pref && prefGroups[s.pref]) prefGroups[s.pref].push(s);
-else prefGroups['その他・不明'].push(s);
-});
-
+const prefGroups = {}; PREFECTURES.forEach(p => prefGroups[p.name] = []); prefGroups['その他・不明'] = [];
+spots.forEach(s => { if (s.pref && prefGroups[s.pref]) prefGroups[s.pref].push(s); else prefGroups['その他・不明'].push(s); });
 let html = '';
 [...PREFECTURES.map(p=>p.name), 'その他・不明'].forEach(pName => {
 const groupSpots = prefGroups[pName];
 if (groupSpots && groupSpots.length > 0) {
-html += `
-<div class="mb-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-<button onclick="toggleAccordion('acc_${pName}')" class="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition">
-<span class="font-bold text-slate-800">${pName}</span>
-<div class="flex items-center gap-2">
-<span class="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full text-[10px]">${groupSpots.length}件</span>
-<i data-lucide="chevron-down" id="icon_${pName}" class="w-4 h-4 text-slate-400 transition-transform"></i>
-</div>
-</button>
-<div id="acc_${pName}" class="hidden flex-col gap-2 p-2 bg-slate-50/50">
-`;
+html += `<div class="mb-2 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm"><button onclick="toggleAccordion('acc_${pName}')" class="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition"><span class="font-bold text-slate-800">${pName}</span><div class="flex items-center gap-2"><span class="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full text-[10px]">${groupSpots.length}件</span><i data-lucide="chevron-down" id="icon_${pName}" class="w-4 h-4 text-slate-400 transition-transform"></i></div></button><div id="acc_${pName}" class="hidden flex-col gap-2 p-2 bg-slate-50/50">`;
 groupSpots.forEach(s => {
-const gInfo = GENRE_CONFIG[s.genre] || GENRE_CONFIG.gourmet;
-const photoCount = (s.photos && s.photos.filter(Boolean).length) || (s.photo ? 1 : 0);
-const photoIcon = photoCount > 0 ? `<i data-lucide="image" class="w-3.5 h-3.5 text-slate-400 ml-1"></i><span class="text-[10px] text-slate-400">${photoCount>1?photoCount:''}</span>` : '';
-html += `
-<div onclick="closeChartModal(); openDetailModal('${s.id}')" class="p-2.5 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-white cursor-pointer transition flex items-center justify-between gap-3 text-xs bg-white">
-<div class="flex items-center gap-3 overflow-hidden flex-1">
-<span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${gInfo.color}"></span>
-<div class="truncate flex-1">
-<div class="font-bold text-slate-800 text-sm truncate">${s.name}</div>
-<div class="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-<span>${s.date || '未設定'}</span>${photoIcon}
-</div>
-</div>
-</div>
-<div class="flex flex-col items-end shrink-0"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></div>
-</div>`;
+const gInfo = GENRE_CONFIG[s.genre] || GENRE_CONFIG.gourmet; const photoCount = (s.photos && s.photos.filter(Boolean).length) || (s.photo ? 1 : 0); const photoIcon = photoCount > 0 ? `<i data-lucide="image" class="w-3.5 h-3.5 text-slate-400 ml-1"></i><span class="text-[10px] text-slate-400">${photoCount>1?photoCount:''}</span>` : '';
+html += `<div onclick="closeChartModal(); openDetailModal('${s.id}')" class="p-2.5 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-white cursor-pointer transition flex items-center justify-between gap-3 text-xs bg-white"><div class="flex items-center gap-3 overflow-hidden flex-1"><span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${gInfo.color}"></span><div class="truncate flex-1"><div class="font-bold text-slate-800 text-sm truncate">${s.name}</div><div class="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5"><span>${s.date || '未設定'}</span>${photoIcon}</div></div></div><div class="flex flex-col items-end shrink-0"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></div></div>`;
 });
 html += `</div></div>`;
 }
@@ -1091,166 +851,72 @@ lucide.createIcons();
 }
 
 window.toggleAccordion = function(id) {
-const el = document.getElementById(id);
-const icon = document.getElementById(id.replace('acc_', 'icon_'));
-if (el.classList.contains('hidden')) {
-el.classList.remove('hidden'); el.classList.add('flex'); icon.style.transform = 'rotate(180deg)';
-} else {
-el.classList.add('hidden'); el.classList.remove('flex'); icon.style.transform = 'rotate(0deg)';
-}
+const el = document.getElementById(id); const icon = document.getElementById(id.replace('acc_', 'icon_'));
+if (el.classList.contains('hidden')) { el.classList.remove('hidden'); el.classList.add('flex'); icon.style.transform = 'rotate(180deg)'; }
+else { el.classList.add('hidden'); el.classList.remove('flex'); icon.style.transform = 'rotate(0deg)'; }
 }
 
-// ★ 行きたい！選択時の評価ラベル＆選択肢変更ロジック
-window.handleGenreChange = function() {
-updateRatingOptions();
-updatePhotoSlotVisibility();
-};
+window.handleGenreChange = function() { updateRatingOptions(); updatePhotoSlotVisibility(); };
 
 window.updateRatingOptions = function() {
-const genre = document.getElementById('spotGenre').value;
-const ratingSelect = document.getElementById('spotRating');
-const label = document.getElementById('ratingLabel');
-const currentVal = ratingSelect.value;
-
-ratingSelect.innerHTML = '';
-
-if (genre === 'want') {
-label.textContent = "行きたい度";
-ratingSelect.innerHTML = `
-<option value="5">★★★★★</option>
-<option value="4">★★★★☆</option>
-<option value="3">★★★☆☆</option>
-<option value="2">★★☆☆☆</option>
-<option value="1">★☆☆☆☆</option>
-`;
-} else {
-label.textContent = "満足度 (★1〜5)";
-ratingSelect.innerHTML = `
-<option value="5">★★★★★ (殿堂)</option>
-<option value="4">★★★★☆ (大満足)</option>
-<option value="3">★★★☆☆ (満足)</option>
-<option value="2">★★☆☆☆ (いいね)</option>
-<option value="1">★☆☆☆☆ (OK)</option>
-`;
-}
-
+const genre = document.getElementById('spotGenre').value; const ratingSelect = document.getElementById('spotRating'); const label = document.getElementById('ratingLabel'); const currentVal = ratingSelect.value;
+if (genre === 'want') { label.textContent = "行きたい度"; ratingSelect.innerHTML = `<option value="5">★★★★★</option><option value="4">★★★★☆</option><option value="3">★★★☆☆</option><option value="2">★★☆☆☆</option><option value="1">★☆☆☆☆</option>`; }
+else { label.textContent = "満足度 (★1〜5)"; ratingSelect.innerHTML = `<option value="5">★★★★★ (殿堂)</option><option value="4">★★★★☆ (大満足)</option><option value="3">★★★☆☆ (満足)</option><option value="2">★★☆☆☆ (いいね)</option><option value="1">★☆☆☆☆ (OK)</option>`; }
 ratingSelect.value = currentVal || '5';
 };
 
 window.updatePhotoSlotVisibility = function() {
-const isEdit = !!document.getElementById('spotId').value;
-const rating = parseInt(document.getElementById('spotRating').value || '5');
-const slot2 = document.getElementById('photoSlot2');
-const slot3 = document.getElementById('photoSlot3');
-const notice = document.getElementById('photoLimitNotice');
-
-if (!isEdit) {
-slot2.classList.add('hidden');
-slot3.classList.add('hidden');
-notice.textContent = "保存後、評価に応じてさらに写真を追加できます";
-} else {
-slot2.classList.toggle('hidden', rating < 4);
-slot3.classList.toggle('hidden', rating < 5);
-
-if (rating === 5) notice.textContent = "★5殿堂：3枚目まで写真を追加可能！";
-else if (rating === 4) notice.textContent = "★4大満足：2枚目まで写真を追加可能！";
-else notice.textContent = "★3以下：写真は1枚のみとなります";
+const isEdit = !!document.getElementById('spotId').value; const rating = parseInt(document.getElementById('spotRating').value || '5');
+const slot2 = document.getElementById('photoSlot2'); const slot3 = document.getElementById('photoSlot3'); const notice = document.getElementById('photoLimitNotice');
+if (!isEdit) { slot2.classList.add('hidden'); slot3.classList.add('hidden'); notice.textContent = "保存後、評価に応じてさらに写真を追加できます"; }
+else {
+slot2.classList.toggle('hidden', rating < 4); slot3.classList.toggle('hidden', rating < 5);
+if (rating === 5) notice.textContent = "★5殿堂：3枚目まで写真を追加可能！"; else if (rating === 4) notice.textContent = "★4大満足：2枚目まで写真を追加可能！"; else notice.textContent = "★3以下：写真は1枚のみとなります";
 }
 }
 
 function openAddModal(lat = null, lng = null, pref = null, name = '') {
-clearSearch();
-document.getElementById('spotForm').reset();
-document.getElementById('spotId').value = '';
-
+clearSearch(); document.getElementById('spotForm').reset(); document.getElementById('spotId').value = '';
 tempPhotoArray = [null, null, null];
-for(let i=1; i<=3; i++) {
-document.getElementById(`photoPreviewBox${i}`).classList.add('hidden');
-document.getElementById(`photoImg${i}`).src = '';
-}
-
+for(let i=1; i<=3; i++) { document.getElementById(`photoPreviewBox${i}`).classList.add('hidden'); document.getElementById(`photoImg${i}`).src = ''; }
 const center = map.getCenter();
-document.getElementById('spotLat').value = lat || center.lat;
-document.getElementById('spotLng').value = lng || center.lng;
+document.getElementById('spotLat').value = lat || center.lat; document.getElementById('spotLng').value = lng || center.lng;
 if (name) document.getElementById('spotName').value = name;
 document.getElementById('spotPref').value = pref || findNearestPrefecture(lat || center.lat, lng || center.lng);
-document.getElementById('spotAuthor').value = 'あつき';
-document.getElementById('spotDate').value = new Date().toISOString().split('T')[0];
-document.getElementById('spotGenre').value = 'gourmet'; // 初期化
-
+document.getElementById('spotAuthor').value = 'あつき'; document.getElementById('spotDate').value = new Date().toISOString().split('T')[0]; document.getElementById('spotGenre').value = 'gourmet';
 document.getElementById('modalTitle').innerHTML = '<i data-lucide="map-pin" class="w-5 h-5 text-rose-500"></i><span>思い出のスポットを保存</span>';
-
-updateRatingOptions();
-updatePhotoSlotVisibility();
-document.getElementById('spotModal').classList.remove('hidden');
-lucide.createIcons();
+updateRatingOptions(); updatePhotoSlotVisibility(); document.getElementById('spotModal').classList.remove('hidden'); lucide.createIcons();
 }
 
-window.addVisitToSameSpot = function(lat, lng, pref, name) {
-closeDetailModal();
-openAddModal(lat, lng, pref, name);
-};
+window.addVisitToSameSpot = function(lat, lng, pref, name) { closeDetailModal(); openAddModal(lat, lng, pref, name); };
 
 window.editSpot = function(id) {
-const spot = (window.spots || []).find(s => s.id === id);
-if (!spot) return;
-
+const spot = (window.spots || []).find(s => s.id === id); if (!spot) return;
 closeDetailModal();
-
-document.getElementById('spotId').value = spot.id;
-document.getElementById('spotLat').value = spot.lat;
-document.getElementById('spotLng').value = spot.lng;
-document.getElementById('spotAuthor').value = spot.author || 'あつき';
-document.getElementById('spotName').value = spot.name;
-document.getElementById('spotPref').value = spot.pref;
-document.getElementById('spotGenre').value = spot.genre;
-updateRatingOptions(); // ジャンルをセットした後に呼び出す
-document.getElementById('spotRating').value = spot.rating || 5;
-document.getElementById('spotDate').value = spot.date || new Date().toISOString().split('T')[0];
-document.getElementById('spotComment').value = spot.comment || '';
-
+document.getElementById('spotId').value = spot.id; document.getElementById('spotLat').value = spot.lat; document.getElementById('spotLng').value = spot.lng;
+document.getElementById('spotAuthor').value = spot.author || 'あつき'; document.getElementById('spotName').value = spot.name; document.getElementById('spotPref').value = spot.pref;
+document.getElementById('spotGenre').value = spot.genre; updateRatingOptions(); document.getElementById('spotRating').value = spot.rating || 5;
+document.getElementById('spotDate').value = spot.date || new Date().toISOString().split('T')[0]; document.getElementById('spotComment').value = spot.comment || '';
 tempPhotoArray = [null, null, null];
-if (spot.photos && Array.isArray(spot.photos)) {
-for(let i=0; i<3; i++) { if(spot.photos[i]) tempPhotoArray[i] = spot.photos[i]; }
-} else if (spot.photo) {
-tempPhotoArray[0] = spot.photo;
-}
-
-for(let i=0; i<3; i++) {
-const imgEl = document.getElementById(`photoImg${i+1}`);
-const boxEl = document.getElementById(`photoPreviewBox${i+1}`);
-if (tempPhotoArray[i]) { imgEl.src = tempPhotoArray[i]; boxEl.classList.remove('hidden'); }
-else { imgEl.src = ''; boxEl.classList.add('hidden'); }
-}
-
+if (spot.photos && Array.isArray(spot.photos)) { for(let i=0; i<3; i++) { if(spot.photos[i]) tempPhotoArray[i] = spot.photos[i]; } } else if (spot.photo) { tempPhotoArray[0] = spot.photo; }
+for(let i=0; i<3; i++) { const imgEl = document.getElementById(`photoImg${i+1}`); const boxEl = document.getElementById(`photoPreviewBox${i+1}`); if (tempPhotoArray[i]) { imgEl.src = tempPhotoArray[i]; boxEl.classList.remove('hidden'); } else { imgEl.src = ''; boxEl.classList.add('hidden'); } }
 document.getElementById('modalTitle').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-indigo-500"></i><span>スポット情報を編集</span>';
-updatePhotoSlotVisibility();
-
-document.getElementById('spotModal').classList.remove('hidden');
-lucide.createIcons();
+updatePhotoSlotVisibility(); document.getElementById('spotModal').classList.remove('hidden'); lucide.createIcons();
 }
 
 function closeAddModal() { document.getElementById('spotModal').classList.add('hidden'); }
 
 window.handleImageSlotUpload = function(e, slotIdx) {
-const file = e.target.files[0];
-if (!file) return;
+const file = e.target.files[0]; if (!file) return;
 const reader = new FileReader();
 reader.onload = function(evt) {
 const img = new Image();
 img.onload = function() {
-const canvas = document.createElement('canvas');
-const MAX_WIDTH = 500;
-let width = img.width; let height = img.height;
+const canvas = document.createElement('canvas'); const MAX_WIDTH = 500; let width = img.width; let height = img.height;
 if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
-canvas.width = width; canvas.height = height;
-const ctx = canvas.getContext('2d');
-ctx.drawImage(img, 0, 0, width, height);
-
-const base64 = canvas.toDataURL('image/jpeg', 0.55);
-tempPhotoArray[slotIdx] = base64;
-document.getElementById(`photoImg${slotIdx+1}`).src = base64;
-document.getElementById(`photoPreviewBox${slotIdx+1}`).classList.remove('hidden');
+canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+const base64 = canvas.toDataURL('image/jpeg', 0.55); tempPhotoArray[slotIdx] = base64;
+document.getElementById(`photoImg${slotIdx+1}`).src = base64; document.getElementById(`photoPreviewBox${slotIdx+1}`).classList.remove('hidden');
 };
 img.src = evt.target.result;
 };
@@ -1259,162 +925,44 @@ reader.readAsDataURL(file);
 
 window.saveSpot = function(e) {
 e.preventDefault();
-
-const id = document.getElementById('spotId').value || Date.now().toString();
-const rating = parseInt(document.getElementById('spotRating').value);
-
+const id = document.getElementById('spotId').value || Date.now().toString(); const rating = parseInt(document.getElementById('spotRating').value);
 let validPhotos = [tempPhotoArray[0], tempPhotoArray[1], tempPhotoArray[2]].filter(Boolean);
-if (rating <= 3) validPhotos = validPhotos.slice(0, 1);
-else if (rating === 4) validPhotos = validPhotos.slice(0, 2);
-else validPhotos = validPhotos.slice(0, 3);
-
-const newSpot = {
-id: id,
-author: document.getElementById('spotAuthor').value,
-name: document.getElementById('spotName').value,
-pref: document.getElementById('spotPref').value,
-genre: document.getElementById('spotGenre').value,
-rating: rating,
-date: document.getElementById('spotDate').value,
-comment: document.getElementById('spotComment').value,
-lat: parseFloat(document.getElementById('spotLat').value),
-lng: parseFloat(document.getElementById('spotLng').value),
-photos: validPhotos,
-photo: validPhotos[0] || null
-};
-
-window.spots = window.spots || [];
-const index = window.spots.findIndex(s => s.id === id);
-const isEdit = index >= 0;
-if (isEdit) window.spots[index] = newSpot;
-else window.spots.push(newSpot);
-
-window.saveLocalStorageSpots();
-if (window.saveSpotToCloud) window.saveSpotToCloud(newSpot);
-
-window.renderMarkers();
-window.updateProgress();
-window.updateAnalytics();
-closeAddModal();
-showToast(isEdit ? "スポット情報を更新しました！" : "思い出スポットを保存しました！");
+if (rating <= 3) validPhotos = validPhotos.slice(0, 1); else if (rating === 4) validPhotos = validPhotos.slice(0, 2); else validPhotos = validPhotos.slice(0, 3);
+const newSpot = { id: id, author: document.getElementById('spotAuthor').value, name: document.getElementById('spotName').value, pref: document.getElementById('spotPref').value, genre: document.getElementById('spotGenre').value, rating: rating, date: document.getElementById('spotDate').value, comment: document.getElementById('spotComment').value, lat: parseFloat(document.getElementById('spotLat').value), lng: parseFloat(document.getElementById('spotLng').value), photos: validPhotos, photo: validPhotos[0] || null };
+window.spots = window.spots || []; const index = window.spots.findIndex(s => s.id === id); const isEdit = index >= 0;
+if (isEdit) window.spots[index] = newSpot; else window.spots.push(newSpot);
+window.saveLocalStorageSpots(); if (window.saveSpotToCloud) window.saveSpotToCloud(newSpot);
+window.renderMarkers(); window.updateProgress(); window.updateAnalytics(); closeAddModal(); showToast(isEdit ? "スポット情報を更新しました！" : "思い出スポットを保存しました！");
 }
 
 function openDetailModal(id) {
-const spot = (window.spots || []).find(s => s.id === id);
-if (!spot) return;
+const spot = (window.spots || []).find(s => s.id === id); if (!spot) return;
 const spotsAtLoc = (window.spots || []).filter(s => Math.abs(s.lat - spot.lat) < 0.0001 && Math.abs(s.lng - spot.lng) < 0.0001);
 openDetailModalGroup(spotsAtLoc.length > 0 ? spotsAtLoc : [spot]);
 }
 
 window.openDetailModalGroup = function(spots) {
 if (!spots || spots.length === 0) return;
-
 spots.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 const primarySpot = spots[0];
-
-let html = `
-<div class="space-y-3">
-<div class="flex items-start justify-between gap-2 pr-8 pb-2 border-b border-slate-100">
-<div>
-<div class="flex items-center gap-1.5 flex-wrap mb-1">
-<h2 class="text-lg font-bold text-slate-800 leading-snug">${primarySpot.name}</h2>
-<span class="bg-rose-50 text-rose-600 border border-rose-100 px-2 py-0.5 rounded-full text-[10px] font-bold">訪問 ${spots.length}回</span>
-</div>
-<p class="text-xs text-slate-500 flex items-center gap-1"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-500"></i> ${primarySpot.pref}</p>
-</div>
-<button onclick="addVisitToSameSpot(${primarySpot.lat}, ${primarySpot.lng}, '${primarySpot.pref}', '${primarySpot.name.replace(/'/g, "\\'")}')" class="shrink-0 bg-rose-500 hover:bg-rose-600 text-white font-bold text-[11px] px-2.5 py-1.5 rounded-lg shadow-sm transition flex items-center gap-1">
-<i data-lucide="plus" class="w-3 h-3"></i><span>別の日の記録を追加</span>
-</button>
-</div>
-
-${spots.length > 1 ? `<div class="flex items-center justify-between text-[11px] text-slate-400 px-1"><span class="flex items-center gap-1 text-slate-500 font-medium"><i data-lucide="chevrons-right" class="w-3.5 h-3.5 text-rose-500"></i>右にスライドで過去の訪問記録 (${spots.length}件)</span><span>新しい順 ➔</span></div>` : ''}
-
-<div class="flex overflow-x-auto gap-3 snap-x snap-mandatory pb-2 -mx-1 px-1 no-scrollbar">
-${spots.map((spot, idx) => {
-const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet;
-const isWant = spot.genre === 'want';
-const isOther = spot.genre === 'other';
-
-// ★「行きたい！」の場合はテキストなしで星のみ
-const stars = isOther ? genreInfo.label :
-(isWant ? '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating) : (RATING_LABELS[spot.rating] || '★'.repeat(spot.rating)));
-
+let html = `<div class="space-y-3"><div class="flex items-start justify-between gap-2 pr-8 pb-2 border-b border-slate-100"><div><div class="flex items-center gap-1.5 flex-wrap mb-1"><h2 class="text-lg font-bold text-slate-800 leading-snug">${primarySpot.name}</h2><span class="bg-rose-50 text-rose-600 border border-rose-100 px-2 py-0.5 rounded-full text-[10px] font-bold">訪問 ${spots.length}回</span></div><p class="text-xs text-slate-500 flex items-center gap-1"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-500"></i> ${primarySpot.pref}</p></div><button onclick="addVisitToSameSpot(${primarySpot.lat}, ${primarySpot.lng}, '${primarySpot.pref}', '${primarySpot.name.replace(/'/g, "\\'")}')" class="shrink-0 bg-rose-500 hover:bg-rose-600 text-white font-bold text-[11px] px-2.5 py-1.5 rounded-lg shadow-sm transition flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i><span>別の日の記録を追加</span></button></div>${spots.length > 1 ? `<div class="flex items-center justify-between text-[11px] text-slate-400 px-1"><span class="flex items-center gap-1 text-slate-500 font-medium"><i data-lucide="chevrons-right" class="w-3.5 h-3.5 text-rose-500"></i>右にスライドで過去の訪問記録 (${spots.length}件)</span><span>新しい順 ➔</span></div>` : ''}<div class="flex overflow-x-auto gap-3 snap-x snap-mandatory pb-2 -mx-1 px-1 no-scrollbar">`;
+html += spots.map((spot, idx) => {
+const genreInfo = GENRE_CONFIG[spot.genre] || GENRE_CONFIG.gourmet; const isWant = spot.genre === 'want'; const isOther = spot.genre === 'other';
+const stars = isOther ? genreInfo.label : (isWant ? '★'.repeat(spot.rating) + '☆'.repeat(5 - spot.rating) : (RATING_LABELS[spot.rating] || '★'.repeat(spot.rating)));
 const photos = (spot.photos && spot.photos.length > 0) ? spot.photos : (spot.photo ? [spot.photo] : []);
-
-return `
-<div class="min-w-full snap-center bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col justify-between space-y-3">
-<div class="space-y-2.5">
-<div class="flex items-center justify-between gap-2">
-<div class="flex items-center gap-1.5 flex-wrap">
-<span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm" style="background-color:${genreInfo.color}">${genreInfo.label}</span>
-<span class="text-[11px] bg-white text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full font-bold shadow-xs">${idx === 0 && spots.length > 1 ? '最新の訪問' : `${spots.length - idx}回目の訪問`}</span>
-${spot.author ? `<span class="text-[11px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full font-bold">by ${spot.author}</span>` : ''}
-</div>
-<div class="text-right shrink-0">
-<div class="text-[11px] font-bold text-slate-600">${spot.date || '日付未設定'}</div>
-<div class="text-amber-500 font-bold text-xs mt-0.5">${stars}</div>
-</div>
-</div>
-
-${photos.length > 0 ? `
-<div class="space-y-1">
-<!-- ★ 画像を横並び（48%幅）にし、タップで拡大表示できるように改善 -->
-<div class="flex overflow-x-auto gap-2 snap-x snap-mandatory rounded-xl bg-white border border-slate-200/60 p-1.5 no-scrollbar">
-${photos.map((p, pIdx) => `
-<div class="shrink-0 w-[48%] max-w-[200px] snap-center flex items-center justify-center relative cursor-pointer group" onclick="openImageModal('${p}')">
-<div class="w-full aspect-square relative overflow-hidden rounded-lg shadow-sm border border-slate-200/60">
-<img src="${p}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
-</div>
-${photos.length > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-bold z-10">${pIdx + 1}/${photos.length}</span>` : ''}
-</div>
-`).join('')}
-</div>
-<p class="text-[10px] text-center text-slate-400 font-medium">タップして写真を拡大（全${photos.length}枚）</p>
-</div>
-` : ''}
-
-${spot.comment ? `<div class="bg-white p-3 rounded-xl border border-slate-200/70 text-xs text-slate-700 whitespace-pre-line leading-relaxed shadow-2xs">${spot.comment}</div>` : ''}
-</div>
-
-<div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
-<div class="flex gap-2">
-<button onclick="window.editSpot('${spot.id}')" class="text-indigo-500 hover:text-indigo-700 font-medium flex items-center gap-1 py-1 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i> この回を編集</button>
-<button onclick="showDeleteConfirm('${spot.id}')" class="text-rose-500 hover:text-rose-700 font-medium flex items-center gap-1 py-1 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 transition"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 削除</button>
-</div>
-<span class="text-[10px] text-slate-400 font-medium">${idx + 1} / ${spots.length}</span>
-</div>
-
-<div id="deleteConfirmBox_${spot.id}" class="hidden bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs space-y-2">
-<p class="font-bold text-rose-700 flex items-center gap-1"><i data-lucide="alert-triangle" class="w-4 h-4"></i> この訪問記録を削除しますか？</p>
-<div class="flex gap-2 justify-end">
-<button onclick="hideDeleteConfirm('${spot.id}')" class="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-slate-600 font-medium text-[11px]">キャンセル</button>
-<button onclick="executeDeleteSpot('${spot.id}')" class="px-2.5 py-1 bg-rose-600 text-white font-bold rounded-lg shadow-sm hover:bg-rose-700 text-[11px]">消去する</button>
-</div>
-</div>
-</div>
-`;
-}).join('')}
-</div>
-<div class="pt-1 text-right"><button onclick="closeDetailModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-1.5 rounded-lg font-medium transition text-xs">閉じる</button></div>
-</div>
-`;
-document.getElementById('detailContent').innerHTML = html;
-document.getElementById('detailModal').classList.remove('hidden');
-lucide.createIcons();
+return `<div class="min-w-full snap-center bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col justify-between space-y-3"><div class="space-y-2.5"><div class="flex items-center justify-between gap-2"><div class="flex items-center gap-1.5 flex-wrap"><span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm" style="background-color:${genreInfo.color}">${genreInfo.label}</span><span class="text-[11px] bg-white text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full font-bold shadow-xs">${idx === 0 && spots.length > 1 ? '最新の訪問' : `${spots.length - idx}回目の訪問`}</span>${spot.author ? `<span class="text-[11px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full font-bold">by ${spot.author}</span>` : ''}</div><div class="text-right shrink-0"><div class="text-[11px] font-bold text-slate-600">${spot.date || '日付未設定'}</div><div class="text-amber-500 font-bold text-xs mt-0.5">${stars}</div></div></div>${photos.length > 0 ? `<div class="space-y-1"><div class="flex overflow-x-auto gap-2 snap-x snap-mandatory rounded-xl bg-white border border-slate-200/60 p-1.5 no-scrollbar">${photos.map((p, pIdx) => `<div class="shrink-0 w-[48%] max-w-[200px] snap-center flex items-center justify-center relative cursor-pointer group" onclick="openImageModal('${p}')"><div class="w-full aspect-square relative overflow-hidden rounded-lg shadow-sm border border-slate-200/60"><img src="${p}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"></div>${photos.length > 1 ? `<span class="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-bold z-10">${pIdx + 1}/${photos.length}</span>` : ''}</div>`).join('')}</div><p class="text-[10px] text-center text-slate-400 font-medium">タップして写真を拡大（全${photos.length}枚）</p></div>` : ''}${spot.comment ? `<div class="bg-white p-3 rounded-xl border border-slate-200/70 text-xs text-slate-700 whitespace-pre-line leading-relaxed shadow-2xs">${spot.comment}</div>` : ''}</div><div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs"><div class="flex gap-2"><button onclick="window.editSpot('${spot.id}')" class="text-indigo-500 hover:text-indigo-700 font-medium flex items-center gap-1 py-1 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i> この回を編集</button><button onclick="showDeleteConfirm('${spot.id}')" class="text-rose-500 hover:text-rose-700 font-medium flex items-center gap-1 py-1 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 transition"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 削除</button></div><span class="text-[10px] text-slate-400 font-medium">${idx + 1} / ${spots.length}</span></div><div id="deleteConfirmBox_${spot.id}" class="hidden bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs space-y-2"><p class="font-bold text-rose-700 flex items-center gap-1"><i data-lucide="alert-triangle" class="w-4 h-4"></i> この訪問記録を削除しますか？</p><div class="flex gap-2 justify-end"><button onclick="hideDeleteConfirm('${spot.id}')" class="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-slate-600 font-medium text-[11px]">キャンセル</button><button onclick="executeDeleteSpot('${spot.id}')" class="px-2.5 py-1 bg-rose-600 text-white font-bold rounded-lg shadow-sm hover:bg-rose-700 text-[11px]">消去する</button></div></div></div>`;
+}).join('');
+html += `</div><div class="pt-1 text-right"><button onclick="closeDetailModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-1.5 rounded-lg font-medium transition text-xs">閉じる</button></div></div>`;
+document.getElementById('detailContent').innerHTML = html; document.getElementById('detailModal').classList.remove('hidden'); lucide.createIcons();
 }
 
 window.showDeleteConfirm = function(id) { document.getElementById(`deleteConfirmBox_${id}`).classList.remove('hidden'); };
 window.hideDeleteConfirm = function(id) { document.getElementById(`deleteConfirmBox_${id}`).classList.add('hidden'); };
 
 window.executeDeleteSpot = async function(id) {
-window.spots = (window.spots || []).filter(s => s.id !== id);
-window.saveLocalStorageSpots();
+window.spots = (window.spots || []).filter(s => s.id !== id); window.saveLocalStorageSpots();
 if (window.deleteSpotFromCloud) window.deleteSpotFromCloud(id);
-window.renderMarkers();
-window.updateProgress();
-window.updateAnalytics();
-closeDetailModal();
-showToast("スポットを完全に削除しました");
+window.renderMarkers(); window.updateProgress(); window.updateAnalytics(); closeDetailModal(); showToast("スポットを完全に削除しました");
 }
 
 window.closeDetailModal = function() { document.getElementById('detailModal').classList.add('hidden'); }
@@ -1422,8 +970,7 @@ window.closeDetailModal = function() { document.getElementById('detailModal').cl
 window.filterGenre = function(genre) {
 currentFilter = genre;
 document.querySelectorAll('.genre-btn').forEach(btn => { btn.classList.remove('bg-slate-800', 'text-white'); btn.classList.add('bg-slate-100', 'text-slate-600'); });
-event.target.classList.add('bg-slate-800', 'text-white');
-window.renderMarkers();
+event.target.classList.add('bg-slate-800', 'text-white'); window.renderMarkers();
 }
 
 window.saveLocalStorageSpots = function() { try { localStorage.setItem('shakemap_spots', JSON.stringify(window.spots || [])); } catch (e) {} };
