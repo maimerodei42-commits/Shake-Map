@@ -29,7 +29,7 @@ height: calc(100vh - 200px);
 min-height: 420px;
 width: 100%;
 z-index: 1;
-background-color: #f1f5f9;
+background-color: #f1f5f9; /* 海がうっすら青みがかったグレーになる背景 */
 touch-action: pan-x pan-y pinch-zoom;
 }
 .leaflet-tile {
@@ -538,7 +538,7 @@ lucide.createIcons();
 initPrefecturesDropdown();
 loadLocalStorageSpots();
 initMap();
-loadPrefecturePolygons(); // ポリゴンデータの読み込み
+loadPrefecturePolygons(); // ポリゴンデータの確実な読み込み
 window.updateProgress();
 window.updateAnalytics();
 
@@ -546,33 +546,53 @@ document.getElementById('spotDate').value = new Date().toISOString().split('T')[
 document.addEventListener('click', function(e) { if (!e.target.closest('.relative')) document.getElementById('searchResults').classList.add('hidden'); });
 };
 
-// ★ 都道府県のGeoJSONデータを非同期で読み込む
+// ★ 都道府県のGeoJSONデータを非同期で（複数の候補から確実に）読み込む
 async function loadPrefecturePolygons() {
 try {
-const res = await fetch('https://raw.githubusercontent.com/niiyz/JapanCityGeoJson/master/geojson/prefectures.geojson');
+let res = await fetch('https://raw.githubusercontent.com/niiyz/JapanCityGeoJson/master/geojson/prefectures.geojson');
+if (!res.ok) throw new Error("fetch failed");
 prefData = await res.json();
+} catch(e) {
+try {
+// メインの取得に失敗した場合のバックアップデータ
+let res = await fetch('https://raw.githubusercontent.com/dataofjapan/land/master/japan.geojson');
+prefData = await res.json();
+} catch(err) {
+console.warn("GeoJSON load error:", err);
+return;
+}
+}
 window.updatePrefecturePolygons();
-} catch(e) { console.warn("GeoJSON load error:", e); }
 }
 
-// ★ 行ったことのある県をサーモンピンクに塗る関数
+// ★ 行ったことのある県をサーモンピンクに塗る関数（文字揺れ対応強化版）
 window.updatePrefecturePolygons = function() {
 if (!map || !prefData) return;
 if (prefGeoJsonLayer) map.removeLayer(prefGeoJsonLayer);
 
 // 訪問済みの都道府県リストを取得（行きたい！等を除く）
 const visitedSpots = (window.spots || []).filter(s => s.genre !== 'want' && s.genre !== 'today' && s.genre !== 'other');
-const visitedPrefs = new Set(visitedSpots.map(s => s.pref));
+const visitedPrefs = new Set();
+
+// データ照合を確実にするため、「都・道・府・県」の文字を取り除いた状態で比較する
+visitedSpots.forEach(s => {
+if(s.pref) visitedPrefs.add(s.pref.replace(/[都道府縣県]$/, ''));
+});
 
 prefGeoJsonLayer = L.geoJSON(prefData, {
 style: function(feature) {
-const prefName = feature.properties.name;
-const isVisited = visitedPrefs.has(prefName);
+const props = feature.properties || {};
+// 複数のGeoJSONフォーマットのプロパティ名に対応
+const name = props.name || props.nam_ja || props.name_ja || props.name_local || props.pref || '';
+const cleanName = typeof name === 'string' ? name.replace(/[都道府縣県]$/, '') : '';
+
+const isVisited = visitedPrefs.has(cleanName);
+
 return {
 color: isVisited ? '#ffffff' : 'transparent', // 訪問済みなら白枠をつける
-weight: isVisited ? 1.5 : 0,
-fillColor: isVisited ? '#fa8072' : 'transparent', // サーモンピンク
-fillOpacity: isVisited ? 0.6 : 0, // 未訪問は完全に透明
+weight: isVisited ? 2 : 0,
+fillColor: isVisited ? '#fa8072' : 'transparent', // サーモンピンク (しゃけ色)
+fillOpacity: isVisited ? 0.8 : 0, // しっかり濃く色をつける
 };
 },
 interactive: false // ポリゴンがクリックを邪魔しないように設定
@@ -581,6 +601,7 @@ interactive: false // ポリゴンがクリックを邪魔しないように設�
 // 制覇度マップの時だけ表示する
 if (currentMapStyle === 'progress') {
 prefGeoJsonLayer.addTo(map);
+prefGeoJsonLayer.bringToFront(); // ポリゴンを地図の手前（ピンの奥）に出す
 }
 };
 
@@ -604,7 +625,7 @@ inertia: true, inertiaDeceleration: 2500, easeLinearity: 0.2
 window.currentSearchLayerGroup = L.layerGroup().addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// ★ 国土地理院（淡色）に透明度とグレーをかけて、境界線がわかる美しいベースマップに
+// ★ デフォルトマップ（国土地理院の淡色）
 baseTileLayer = L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
 attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
 maxZoom: 18, minZoom: 5, keepBuffer: 6,
@@ -660,7 +681,10 @@ maxZoom: 18, minZoom: 5, keepBuffer: 6,
 className: 'pale-map-tiles'
 }).addTo(map);
 
-if (prefGeoJsonLayer) prefGeoJsonLayer.addTo(map);
+if (prefGeoJsonLayer) {
+prefGeoJsonLayer.addTo(map);
+prefGeoJsonLayer.bringToFront(); // 色をしっかりと前面に出す
+}
 
 currentMapStyle = 'progress';
 showToast("制覇度マップ（しゃけ色）に切り替えました");
@@ -681,8 +705,8 @@ showToast("シンプルな白地図風に切り替えました");
 }
 
 window.renderMarkers();
-if(prefGeoJsonLayer && currentMapStyle === 'progress') prefGeoJsonLayer.bringToFront();
 };
+
 
 window.resetMapBearing = function() {
 if (map && map.setBearing) { map.setBearing(0); document.getElementById('compassBtn').classList.add('hidden'); showToast("地図を北向きに戻しました"); }
